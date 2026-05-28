@@ -1,0 +1,1286 @@
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot } from 'firebase/firestore';
+
+// Default Demo Data based on the uploaded report & additional realistic data (used for Cloud Seeding)
+const initialStudents = [
+  {
+    id: "1",
+    nama: "Athariz Chalief Saputra",
+    nis: "NIS-000/7 A Putra",
+    sas: 84,
+    sat: 82,
+    psikotes: "Potensi dasar yang baik, terutama di area kognitif.",
+    progres_1s: "Perkembangan sesuai harapan, mampu mengaplikasikan logika dasar dalam kegiatan belajar.",
+    mapel_unggul: "Matematika, TIK",
+    mapel_perlu: "Seni Budaya",
+    ibadah: "Pelaksanaan ibadah wajib baik. Dhuha dan puasa sunnah perlu konsistensi.",
+    tahfizh_juz: 3,
+    tahfizh_detail: "3 Juz (Termasuk Juz 30 dan Surah Al-Mulk)",
+    disiplin: "Cukup disiplin dan bertanggung jawab. Sering mendapat teguran ringan terkait kerapihan.",
+    sosial: "Aktif dalam interaksi sosial, namun masih perlu dorongan untuk mengambil inisiatif kepemimpinan.",
+    prestasi: "Berpartisipasi aktif dalam kegiatan Muhadharah.",
+    fokus: "Diharapkan dapat meningkatkan manajemen waktu dan fokus pada penguasaan dasar-dasar ilmu syar'i.",
+    pesan_wali: "Ananda memiliki dasar yang kuat. Jaga semangat belajar dan tingkatkan ibadah sunnah untuk kesuksesan dunia akhirat.",
+    wali_kelas: "Ustadz Maulana Azka, Lc.",
+    wali_kamar: "Ustadz Ali Murtadlo",
+    kepala_sekolah: "Ustadz Abd. Halim, S.S.I"
+  },
+  {
+    id: "2",
+    nama: "Muhammad Fatih Al-Fatih",
+    nis: "NIS-002/7 A Putra",
+    sas: 78,
+    sat: 85,
+    psikotes: "Kemampuan verbal sangat baik, daya ingat kuat untuk hafalan.",
+    progres_1s: "Peningkatan pesat di akhir semester, menunjukkan motivasi belajar yang tinggi.",
+    mapel_unggul: "Bahasa Arab, Hadits",
+    mapel_perlu: "Matematika",
+    ibadah: "Sangat rajin ibadah wajib & sunnah. Menjadi muadzin di masjid pondok.",
+    tahfizh_juz: 5,
+    tahfizh_detail: "5 Juz (Juz 30, 29, 28, dan Al-Baqarah awal)",
+    disiplin: "Sangat disiplin, selalu menjaga kerapihan asrama dan pakaian.",
+    sosial: "Memiliki jiwa kepemimpinan tinggi, dipercaya menjadi ketua kelas.",
+    prestasi: "Juara 1 Lomba Pidato Bahasa Arab tingkat Kabupaten.",
+    fokus: "Fokus melatih logika matematika dasar dan konsistensi murajaah hafalan baru.",
+    pesan_wali: "Pertahankan prestasi gemilang ini, Nak. Tetaplah rendah hati dan jadilah pelopor kebaikan di asrama.",
+    wali_kelas: "Ustadz Maulana Azka, Lc.",
+    wali_kamar: "Ustadz Ali Murtadlo",
+    kepala_sekolah: "Ustadz Abd. Halim, S.S.I"
+  },
+  {
+    id: "3",
+    nama: "Zayyan Ahmad Al-Ghifari",
+    nis: "NIS-003/7 A Putra",
+    sas: 90,
+    sat: 92,
+    psikotes: "Kecerdasan numerik superior dengan kemampuan analitis tinggi.",
+    progres_1s: "Konsisten mempertahankan nilai akademis tinggi sepanjang semester.",
+    mapel_unggul: "IPA, Matematika, Fiqih",
+    mapel_perlu: "Bahasa Inggris",
+    ibadah: "Ibadah wajib tertib. Perlu pembiasaan lebih untuk qiyamul lail.",
+    tahfizh_juz: 4,
+    tahfizh_detail: "4 Juz (Juz 30, 29, dan Surah pilihan)",
+    disiplin: "Disiplin baik, perlu diingatkan untuk bangun lebih awal saat subuh.",
+    sosial: "Pendiam namun kooperatif dalam kerja kelompok.",
+    prestasi: "Harapan 2 Olimpiade Sains Nasional (OSN) Matematika.",
+    fokus: "Meningkatkan kemampuan komunikasi bahasa asing serta keaktifan bersosialisasi.",
+    pesan_wali: "Masya Allah, kemampuan akademis luar biasa. Seimbangkan dengan keaktifan sosial dan dakwah ya.",
+    wali_kelas: "Ustadz Maulana Azka, Lc.",
+    wali_kamar: "Ustadz Ali Murtadlo",
+    kepala_sekolah: "Ustadz Abd. Halim, S.S.I"
+  }
+];
+
+// Firebase Global variables provided by runtime environment
+const firebaseConfig = typeof __firebase_config !== 'undefined' 
+  ? JSON.parse(__firebase_config) 
+  : { apiKey: "" }; // Fallback
+
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+// Initialize Firebase SDK services
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Global Settings State for Semester and Date (Shared across all students in Cloud)
+  const [globalSemester, setGlobalSemester] = useState("Ganjil 2025/2026");
+  const [globalTanggal, setGlobalTanggal] = useState("19 Desember 2025");
+
+  const [activeTab, setActiveTab] = useState('report'); // report, database
+  const [selectedStudentId, setSelectedStudentId] = useState("1");
+  const [bulkImportText, setBulkImportText] = useState("");
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  
+  // Custom dialog alert & confirmation state to replace window.alert / window.confirm
+  const [alertConfig, setAlertConfig] = useState(null);
+
+  // Step 1: Handle Authentication FIRST (Strict compliance with Rule 3)
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (error) {
+        console.error("Auth error:", error);
+      }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, (usr) => {
+      setUser(usr);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Step 2: Sync with Cloud Firestore upon successful Auth (Strict compliance with Rule 1 & 2)
+  useEffect(() => {
+    if (!user) return;
+
+    // 1. Sync Students Collection (Simple query - Rule 2 / Strict public path - Rule 1)
+    const studentsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'students');
+    const unsubStudents = onSnapshot(studentsColRef, (snapshot) => {
+      const studentList = [];
+      snapshot.forEach((docSnap) => {
+        studentList.push({ id: docSnap.id, ...docSnap.data() });
+      });
+
+      if (studentList.length === 0) {
+        // DB is empty: Seed default student data
+        initialStudents.forEach(async (student) => {
+          const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id);
+          await setDoc(studentDocRef, student);
+        });
+      } else {
+        setStudents(studentList);
+        setLoading(false);
+        // Ensure selectedStudentId is always valid
+        if (!studentList.some(s => s.id === selectedStudentId)) {
+          setSelectedStudentId(studentList[0].id);
+        }
+      }
+    }, (error) => {
+      console.error("Students Firestore subscription error:", error);
+    });
+
+    // 2. Sync Global Settings Document (Strict public path - Rule 1)
+    const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'configs', 'settings');
+    const unsubConfig = onSnapshot(configDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.semester) setGlobalSemester(data.semester);
+        if (data.tanggal) setGlobalTanggal(data.tanggal);
+      } else {
+        // Seed initial configurations
+        setDoc(configDocRef, {
+          semester: "Ganjil 2025/2026",
+          tanggal: "19 Desember 2025"
+        });
+      }
+    }, (error) => {
+      console.error("Configs Firestore subscription error:", error);
+    });
+
+    return () => {
+      unsubStudents();
+      unsubConfig();
+    };
+  }, [user]);
+
+  const selectedStudent = students.find(s => s.id === selectedStudentId) || students[0] || null;
+
+  // Indexing for Santri Next/Prev navigation
+  const currentIndex = students.findIndex(s => s.id === selectedStudentId);
+
+  // Custom alert / confirmation trigger helpers
+  const triggerAlert = (message, title = "Informasi") => {
+    setAlertConfig({ type: 'alert', title, message });
+  };
+
+  const triggerConfirm = (message, onConfirm, title = "Konfirmasi Tindakan") => {
+    setAlertConfig({ type: 'confirm', title, message, onConfirm });
+  };
+
+  const handlePrev = () => {
+    if (students.length === 0) return;
+    if (currentIndex > 0) {
+      setSelectedStudentId(students[currentIndex - 1].id);
+    } else {
+      setSelectedStudentId(students[students.length - 1].id); // Cycle to end
+    }
+  };
+
+  const handleNext = () => {
+    if (students.length === 0) return;
+    if (currentIndex < students.length - 1) {
+      setSelectedStudentId(students[currentIndex + 1].id);
+    } else {
+      setSelectedStudentId(students[0].id); // Cycle to start
+    }
+  };
+
+  // Push updates instantly to Firestore Cloud Storage
+  const handleSaveStudent = async (studentData) => {
+    if (!user) return;
+    const studentId = isAddingNew ? Date.now().toString() : studentData.id;
+    const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId);
+
+    const payload = {
+      ...studentData,
+      id: studentId,
+      sas: Number(studentData.sas) || 80,
+      sat: Number(studentData.sat) || 80,
+      tahfizh_juz: Number(studentData.tahfizh_juz) || 0
+    };
+
+    try {
+      await setDoc(studentDocRef, payload);
+      setSelectedStudentId(studentId);
+      setEditingStudent(null);
+      setIsAddingNew(false);
+    } catch (error) {
+      triggerAlert("Gagal menyimpan data ke cloud storage: " + error.message, "Penyimpanan Gagal");
+    }
+  };
+
+  // Delete student directly from Cloud Storage
+  const handleDeleteStudent = (id) => {
+    triggerConfirm("Apakah Anda yakin ingin menghapus data santri ini secara permanen dari Cloud Database?", async () => {
+      if (!user) return;
+      try {
+        const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', id);
+        await deleteDoc(studentDocRef);
+      } catch (error) {
+        triggerAlert("Gagal menghapus data dari cloud storage: " + error.message, "Penghapusan Gagal");
+      }
+    });
+  };
+
+  // Save updated global configurations to Cloud Firestore
+  const updateGlobalSemester = async (val) => {
+    setGlobalSemester(val);
+    if (!user) return;
+    try {
+      const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'configs', 'settings');
+      await setDoc(configDocRef, { semester: val }, { merge: true });
+    } catch (error) {
+      console.error("Gagal menyinkronkan data semester ke cloud:", error);
+    }
+  };
+
+  const updateGlobalTanggal = async (val) => {
+    setGlobalTanggal(val);
+    if (!user) return;
+    try {
+      const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'configs', 'settings');
+      await setDoc(configDocRef, { tanggal: val }, { merge: true });
+    } catch (error) {
+      console.error("Gagal menyinkronkan data tanggal ke cloud:", error);
+    }
+  };
+
+  // Process and push bulk imports to Cloud Firestore
+  const handleImportTSV = async () => {
+    if (!user) return;
+    try {
+      const lines = bulkImportText.trim().split("\n");
+      if (lines.length < 2) {
+        triggerAlert("Mohon masukkan format baris data yang valid beserta baris tajuk (header) kolomnya.", "Gagal Impor");
+        return;
+      }
+      
+      const headers = lines[0].toLowerCase().split("\t").map(h => h.trim());
+      const newStudents = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cols = lines[i].split("\t").map(c => c.trim());
+        const rowObj = {};
+        
+        headers.forEach((header, index) => {
+          let key = header;
+          if (header.includes("nama")) key = "nama";
+          else if (header.includes("nis")) key = "nis";
+          else if (header.includes("sas") || header.includes("ganjil") || header.includes("ats")) key = "sas";
+          else if (header.includes("sat") || header.includes("genap")) key = "sat";
+          else if (header.includes("psikotes")) key = "psikotes";
+          else if (header.includes("progres")) key = "progres_1s";
+          else if (header.includes("unggul")) key = "mapel_unggul";
+          else if (header.includes("perlu")) key = "mapel_perlu";
+          else if (header.includes("ibadah")) key = "ibadah";
+          else if (header.includes("tahfizh_juz") || header.includes("juz")) key = "tahfizh_juz";
+          else if (header.includes("tahfizh_detail") || header.includes("keterangan tahfizh")) key = "tahfizh_detail";
+          else if (header.includes("disiplin")) key = "disiplin";
+          else if (header.includes("sosial")) key = "sosial";
+          else if (header.includes("prestasi")) key = "prestasi";
+          else if (header.includes("fokus")) key = "fokus";
+          else if (header.includes("pesan")) key = "pesan_wali";
+          else if (header.includes("wali_kelas") || header.includes("wali kelas")) key = "wali_kelas";
+          else if (header.includes("wali_kamar") || header.includes("wali kamar")) key = "wali_kamar";
+          else if (header.includes("kepala_sekolah") || header.includes("kepala sekolah")) key = "kepala_sekolah";
+
+          rowObj[key] = cols[index];
+        });
+
+        rowObj.id = (Date.now() + i).toString();
+        rowObj.sas = Number(rowObj.sas) || Number(rowObj.ats) || 80;
+        rowObj.sat = Number(rowObj.sat) || 80;
+        rowObj.tahfizh_juz = Number(rowObj.tahfizh_juz) || 0;
+
+        rowObj.nama = rowObj.nama || "Santri Baru";
+        rowObj.nis = rowObj.nis || "NIS-xxx";
+        rowObj.psikotes = rowObj.psikotes || "Potensi kognitif baik.";
+        rowObj.progres_1s = rowObj.progres_1s || "Perkembangan sesuai harapan.";
+        rowObj.mapel_unggul = rowObj.mapel_unggul || "-";
+        rowObj.mapel_perlu = rowObj.mapel_perlu || "-";
+        rowObj.ibadah = rowObj.ibadah || "Wajib baik, sunnah perlu pembiasaan.";
+        rowObj.tahfizh_detail = rowObj.tahfizh_detail || `${rowObj.tahfizh_juz} Juz`;
+        rowObj.disiplin = rowObj.disiplin || "Disiplin.";
+        rowObj.sosial = rowObj.sosial || "Interaksi baik.";
+        rowObj.prestasi = rowObj.prestasi || "-";
+        rowObj.fokus = rowObj.fokus || "Pertahankan prestasi.";
+        rowObj.pesan_wali = rowObj.pesan_wali || "Tingkatkan ibadah dan belajar.";
+        
+        rowObj.wali_kelas = rowObj.wali_kelas || "Ustadz Maulana Azka, Lc.";
+        rowObj.wali_kamar = rowObj.wali_kamar || "Ustadz Ali Murtadlo";
+        rowObj.kepala_sekolah = rowObj.kepala_sekolah || "Ustadz Abd. Halim, S.S.I";
+
+        newStudents.push(rowObj);
+      }
+
+      // Save each imported student into Firestore Cloud
+      for (const student of newStudents) {
+        const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id);
+        await setDoc(studentDocRef, student);
+      }
+
+      setShowImportModal(false);
+      setBulkImportText("");
+      triggerAlert(`Berhasil mengimpor ${newStudents.length} data santri baru ke dalam Cloud Database secara aman.`, "Impor Sukses");
+    } catch (err) {
+      triggerAlert("Format data spreadsheet tidak valid atau gagal melakukan sinkronisasi dengan cloud database: " + err.message, "Kesalahan Impor");
+    }
+  };
+
+  const getTemplateTSV = () => {
+    const headers = "Nama\tNIS\tSAS\tSAT\tPsikotes\tProgres\tUnggul\tPerlu\tIbadah\tJuz\tKeterangan Tahfizh\tDisiplin\tSosial\tPrestasi\tFokus\tPesan Wali\tWali Kelas\tWali Kamar\tKepala Sekolah\n";
+    const row = "Ahmad Syarif\tNIS-009/7 A\t85\t88\tPotensi kognitif tinggi\tKemajuan pesat\tMatematika\tSeni Budaya\tShalat berjamaah disiplin\t4\t4 Juz lancar\tSangat rapi\tAktif memimpin\tJuara Adzan\tIstiqamah murajaah\tJaga semangat!\tUstadz Maulana Azka, Lc.\tUstadz Ali Murtadlo\tUstadz Abd. Halim, S.S.I";
+    setBulkImportText(headers + row);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const calculateChange = (student) => {
+    if (!student || !student.sas) return { percent: "0", positive: true };
+    const diff = student.sat - student.sas;
+    const percent = ((diff / student.sas) * 100).toFixed(1);
+    return {
+      percent: Math.abs(percent),
+      positive: diff >= 0
+    };
+  };
+
+  const progress = selectedStudent ? calculateChange(selectedStudent) : { percent: "0", positive: true };
+
+  // Premium loading view while connecting to Firestore database
+  if (loading && students.length === 0) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full text-center space-y-4 border border-slate-200">
+          <div className="w-16 h-16 bg-indigo-50 text-[#2b3990] rounded-full flex items-center justify-center mx-auto text-3xl animate-bounce">
+            ☁️
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-slate-900">Menghubungkan ke Cloud...</h3>
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+              Mohon tunggu sebentar, sistem sedang mengamankan sambungan database terpusat Malika Islamic Boarding School.
+            </p>
+          </div>
+          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+            <div className="bg-[#2b3990] h-full rounded-full animate-pulse" style={{ width: '100%' }}></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-800">
+      
+      {/* High-Precision Printing Style Overrides for Perfect A4 Output */}
+      <style>{`
+        @page {
+          size: A4;
+          margin: 0 !important;
+        }
+        @media print {
+          /* Force light background colors & text clarity */
+          html, body {
+            background-color: white !important;
+            color: black !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          /* Hide parent application elements */
+          header, .no-print, .print-hidden, button, select, footer, input {
+            display: none !important;
+          }
+          
+          /* Neutralize wrappers */
+          .min-h-screen, .flex-grow, .max-w-4xl, .mx-auto, .p-4, .space-y-6 {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: none !important;
+            width: 100% !important;
+            box-shadow: none !important;
+            background: transparent !important;
+          }
+
+          /* Lock target document exact to A4 */
+          .print-page {
+            width: 210mm !important;
+            height: 297mm !important;
+            min-height: 297mm !important;
+            padding: 15mm !important; /* Premium safe padding */
+            margin: 0 auto !important;
+            box-sizing: border-box !important;
+            page-break-after: always !important;
+            page-break-inside: avoid !important;
+            background: white !important;
+            border: none !important;
+            box-shadow: none !important;
+            position: relative !important;
+            overflow: hidden !important;
+          }
+          
+          /* Prevent blank trailing page */
+          .print-page:last-child {
+            page-break-after: avoid !important;
+          }
+        }
+      `}</style>
+
+      {/* Navbar (Hidden during printing) */}
+      <header className="bg-[#2b3990] text-white shadow-md print:hidden">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-inner overflow-hidden p-1">
+              <img src="https://iili.io/FsLlXA7.png" alt="Logo Malika" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <h1 className="text-lg font-extrabold tracking-wide">MALIKA ISLAMIC BOARDING SCHOOL</h1>
+              <p className="text-[10px] text-indigo-200">Sistem Laporan Holistik Santri • Cetak PDF Presisi</p>
+            </div>
+          </div>
+          
+          <nav className="flex gap-2">
+            <button 
+              onClick={() => setActiveTab('report')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wider uppercase transition-all ${activeTab === 'report' ? 'bg-white text-[#2b3990] shadow' : 'text-indigo-100 hover:bg-[#1f2a70]'}`}
+            >
+              📄 Rapor Holistik
+            </button>
+            <button 
+              onClick={() => setActiveTab('database')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wider uppercase transition-all ${activeTab === 'database' ? 'bg-white text-[#2b3990] shadow' : 'text-indigo-100 hover:bg-[#1f2a70]'}`}
+            >
+              🗃️ Database Spreadsheet
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <div className="flex-grow max-w-4xl mx-auto w-full p-4 print:p-0">
+        
+        {/* Helper Notification Banner for iframe prints */}
+        {activeTab === 'report' && (
+          <div className="no-print bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4 text-xs text-amber-900 flex items-start gap-2.5">
+            <span className="text-base">💡</span>
+            <div>
+              <p className="font-bold">Tips Cetak Rapor (PDF A4 Presisi):</p>
+              <p className="mt-0.5 leading-relaxed">
+                Jika browser Anda memblokir tombol cetak di dalam iframe, silakan klik kanan area kertas putih rapor di bawah, lalu pilih <strong>"Print Frame..."</strong> atau tekan tombol kombinasi <strong>Ctrl + P</strong> (<strong>Cmd + P</strong> di Mac) untuk membuka menu cetak PDF default dengan instan.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* GLOBAL SETTINGS PANEL - Synced in real-time with Cloud Storage */}
+        {activeTab === 'report' && (
+          <div className="no-print bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-black text-[#2b3990] uppercase tracking-wider">⚙️ Pengaturan Global (Semua Santri)</h4>
+                  <span className="text-[9px] bg-indigo-100 text-indigo-800 font-extrabold px-1.5 py-0.5 rounded flex items-center gap-1 animate-pulse">
+                    <span>☁️</span> Cloud Terhubung
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Nilai semester dan tanggal laporan di bawah ini akan diterapkan secara seragam ke seluruh berkas santri di database cloud.</p>
+              </div>
+              <div className="flex flex-wrap sm:flex-nowrap gap-3 w-full md:w-auto">
+                <div className="w-1/2 md:w-40">
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Semester</label>
+                  <input 
+                    type="text" 
+                    value={globalSemester}
+                    onChange={(e) => updateGlobalSemester(e.target.value)}
+                    placeholder="Ganjil 2025/2026"
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-[#2b3990] focus:outline-none"
+                  />
+                </div>
+                <div className="w-1/2 md:w-48">
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Tanggal Laporan</label>
+                  <input 
+                    type="text" 
+                    value={globalTanggal}
+                    onChange={(e) => updateGlobalTanggal(e.target.value)}
+                    placeholder="19 Desember 2025"
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-[#2b3990] focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TOP CONTROL NAVIGATION DECK (Only on Report Tab and Hidden in Print) */}
+        {activeTab === 'report' && students.length > 0 && (
+          <div className="no-print bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            
+            {/* Prev/Next Cycler controls */}
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+              <button 
+                onClick={handlePrev}
+                className="px-4 py-2 bg-[#2b3990] hover:bg-[#1f2a70] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+              >
+                ⬅️ Sebelum
+              </button>
+
+              <div className="flex flex-col items-center">
+                <select 
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#2b3990]"
+                >
+                  {students.map((s, idx) => (
+                    <option key={s.id} value={s.id}>
+                      {idx + 1}. {s.nama}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] font-bold text-slate-400 mt-1">
+                  Santri {currentIndex + 1} dari {students.length}
+                </span>
+              </div>
+
+              <button 
+                onClick={handleNext}
+                className="px-4 py-2 bg-[#2b3990] hover:bg-[#1f2a70] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+              >
+                Selanjutnya ➡️
+              </button>
+            </div>
+
+            {/* Quick Actions Panel */}
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
+              <button 
+                onClick={() => {
+                  setIsAddingNew(true);
+                  setEditingStudent({
+                    nama: "", nis: "", sas: 80, sat: 80, psikotes: "", progres_1s: "", 
+                    mapel_unggul: "", mapel_perlu: "", ibadah: "", tahfizh_juz: 0, 
+                    tahfizh_detail: "", disiplin: "", sosial: "", prestasi: "", fokus: "", pesan_wali: "",
+                    wali_kelas: "Ustadz Maulana Azka, Lc.",
+                    wali_kamar: "Ustadz Ali Murtadlo",
+                    kepala_sekolah: "Ustadz Abd. Halim, S.S.I"
+                  });
+                }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition shadow"
+              >
+                ➕ Tambah Santri
+              </button>
+              <button 
+                onClick={() => {
+                  setIsAddingNew(false);
+                  setEditingStudent(selectedStudent);
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider rounded-xl transition"
+              >
+                ✏️ Edit Data
+              </button>
+              <button 
+                onClick={handlePrint}
+                className="px-5 py-2.5 bg-[#2b3990] hover:bg-[#1f2a70] text-white font-bold text-xs uppercase tracking-widest rounded-xl transition shadow flex items-center gap-1.5"
+              >
+                🖨️ Cetak Rapor (PDF)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic Display Area */}
+        <div className="flex-grow">
+          
+          {/* TAB 1: HOLISTIC REPORT VIEWER (PRINT OPTIMIZED) */}
+          {activeTab === 'report' && selectedStudent && (
+            <div className="space-y-6">
+              
+              {/* PAGE 1 OF THE REPORT CARD */}
+              <div className="print-page bg-white max-w-[210mm] mx-auto p-12 shadow-md border border-slate-200 relative overflow-hidden">
+                
+                {/* Center Large Transparent Watermark */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] pointer-events-none opacity-[0.04] flex items-center justify-center z-0">
+                  <img src="https://iili.io/FsLlXA7.png" alt="Watermark" className="w-full h-full object-contain" />
+                </div>
+
+                <div className="relative z-10 flex flex-col h-full justify-between">
+                  {/* School Header */}
+                  <div>
+                    <div className="flex justify-between items-center border-b-2 border-[#2b3990] pb-4 mb-5">
+                      <div className="flex items-center gap-4">
+                        {/* Logo Malika */}
+                        <div className="w-16 h-16 flex-shrink-0">
+                          <img src="https://iili.io/FsLlXA7.png" alt="Logo Malika" className="w-full h-full object-contain" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-black tracking-wider text-[#2b3990] leading-none mb-1">MALIKA ISLAMIC BOARDING SCHOOL</h2>
+                          {/* Title - Set to Vibrant Bright Light Blue (#00aeef) */}
+                          <h3 className="text-sm font-black tracking-wider text-[#00aeef] leading-tight">RAPOR PERKEMBANGAN HOLISTIK SANTRI</h3>
+                          <p className="text-[9px] text-slate-500 leading-tight">Jl. KS Tubun, RT. 002, RW. 02, Kel. Koang Jaya, Kec. Karawaci Kota Tangerang, Banten</p>
+                        </div>
+                      </div>
+                      <div className="text-right flex flex-col items-end justify-center">
+                        <span className="text-[11px] font-extrabold text-slate-700 tracking-wide">
+                          Semester: {globalSemester}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Student Metadata */}
+                    <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/60 grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-8 mb-6 text-sm">
+                      <div className="flex items-center">
+                        <span className="w-32 font-bold text-slate-700">Nama Santri</span>
+                        <span className="text-slate-900 font-semibold">: {selectedStudent.nama}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="w-32 font-bold text-slate-700">NIS / Kelas</span>
+                        <span className="text-slate-900">: {selectedStudent.nis}</span>
+                      </div>
+                    </div>
+
+                    {/* SECTION I: AKADEMIK DAN PERKEMBANGAN DIRI */}
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-[4px] h-[22px] bg-[#2b3990]"></div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">AKADEMIK DAN PERKEMBANGAN DIRI</h3>
+                      </div>
+
+                      {/* Two-Column Core Layout */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        
+                        {/* SAS & SAT Comparison Block */}
+                        <div className="border border-slate-200 rounded-xl p-4 bg-white flex flex-col justify-between h-[230px]">
+                          <div>
+                            <h4 className="text-xs font-black text-[#2b3990] uppercase tracking-wider mb-3">Perbandingan Nilai Rata-rata</h4>
+                            
+                            <div className="space-y-3">
+                              <div>
+                                <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                                  <span>SAS (Nilai Semester Ganjil)</span>
+                                  <span className="font-extrabold text-slate-900">{selectedStudent.sas}</span>
+                                </div>
+                                <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden border border-slate-200/50">
+                                  <div className="bg-[#2b3990] h-full rounded-full transition-all duration-500" style={{ width: `${selectedStudent.sas}%` }}></div>
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                                  <span>SAT (Nilai Semester Genap)</span>
+                                  <span className="font-extrabold text-slate-900">{selectedStudent.sat}</span>
+                                </div>
+                                <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden border border-slate-200/50">
+                                  <div className="bg-[#4d5ec2] h-full rounded-full transition-all duration-500" style={{ width: `${selectedStudent.sat}%` }}></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Dynamic Smart Note */}
+                          <div className="bg-slate-50 border border-slate-100 rounded-lg p-2.5 mt-2">
+                            <p className="text-[11px] text-slate-600 leading-relaxed font-semibold">
+                              <span className="font-bold text-slate-800">Notes: </span>
+                              {!progress.positive ? (
+                                `Perlu perhatian pada mata pelajaran tertentu karena ada sedikit penurunan nilai rata-rata (${progress.percent}%).`
+                              ) : (
+                                `Luar biasa! Terjadi peningkatan nilai rata-rata sebesar ${progress.percent}%. Pertahankan konsistensi belajar!`
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Progres Perkembangan Diri */}
+                        <div className="border border-slate-200 rounded-xl p-4 bg-white flex flex-col gap-3 h-[230px]">
+                          <h4 className="text-xs font-black text-[#2b3990] uppercase tracking-wider mb-1">Progres Perkembangan Diri</h4>
+                          
+                          {/* Psikotes */}
+                          <div className="bg-purple-50/50 border border-purple-100 rounded-lg p-3">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="text-purple-700 text-xs">🕒</span>
+                              <span className="text-[10px] text-purple-800 font-extrabold uppercase tracking-wider">Hasil Psikotes Juni 2025</span>
+                            </div>
+                            <p className="text-xs text-slate-700 leading-snug font-medium">{selectedStudent.psikotes}</p>
+                          </div>
+
+                          {/* Progres 1 Semester */}
+                          <div className="bg-white border border-purple-200 rounded-lg p-3">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="text-purple-600 text-xs">✓</span>
+                              <span className="text-[10px] text-purple-800 font-extrabold uppercase tracking-wider">Progres 1 Semester</span>
+                            </div>
+                            <p className="text-xs text-slate-700 leading-snug font-medium">{selectedStudent.progres_1s}</p>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Lower Row: Daya Serap & Tahfizh */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        {/* Analisis Daya Serap */}
+                        <div className="border border-slate-200 rounded-xl p-4 bg-white h-[105px] flex flex-col justify-center">
+                          <h4 className="text-xs font-black text-[#2b3990] uppercase tracking-wider mb-2">Analisis Daya Serap</h4>
+                          <div className="space-y-1 text-xs">
+                            <div>
+                              <span className="font-bold text-slate-700">Mata Pelajaran Unggul: </span>
+                              <span className="font-black text-[#2b3990]">{selectedStudent.mapel_unggul}</span>
+                            </div>
+                            <div className="mt-1">
+                              <span className="font-bold text-slate-700">Mata Pelajaran Perlu Peningkatan: </span>
+                              <span className="font-black text-rose-600">{selectedStudent.mapel_perlu}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tahfizh Qur'an */}
+                        <div className="border border-teal-200 rounded-xl p-4 bg-teal-50/20 h-[105px] flex flex-col justify-center">
+                          <h4 className="text-xs font-black text-teal-800 uppercase tracking-wider mb-1">Tahfizh Qur'an</h4>
+                          <p className="text-sm font-extrabold text-slate-800 leading-snug">
+                            {selectedStudent.tahfizh_detail}
+                          </p>
+                        </div>
+
+                      </div>
+                    </div>
+
+                    {/* SECTION II: KARAKTER DAN KEMATANGAN DIRI */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-[4px] h-[22px] bg-[#2b3990]"></div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">KARAKTER DAN KEMATANGAN DIRI</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        {/* Ibadah Harian */}
+                        <div className="border border-blue-200 bg-blue-50/10 rounded-xl p-4 h-[105px] flex flex-col justify-between">
+                          <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider">Ibadah Harian</h4>
+                          <p className="text-xs text-slate-700 leading-relaxed font-medium mt-1">
+                            {selectedStudent.ibadah}
+                          </p>
+                        </div>
+
+                        {/* Sikap dan Disiplin */}
+                        <div className="border border-rose-200 bg-rose-50/10 rounded-xl p-4 h-[105px] flex flex-col justify-between">
+                          <h4 className="text-xs font-black text-rose-800 uppercase tracking-wider">Sikap dan Disiplin</h4>
+                          <p className="text-xs text-slate-700 leading-relaxed font-medium mt-1">
+                            {selectedStudent.disiplin}
+                          </p>
+                        </div>
+
+                        {/* Interaksi Sosial dan Kepemimpinan */}
+                        <div className="border border-amber-200 bg-amber-50/10 rounded-xl p-4 h-[105px] flex flex-col justify-between">
+                          <h4 className="text-xs font-black text-amber-800 uppercase tracking-wider">Interaksi Sosial dan Kepemimpinan</h4>
+                          <p className="text-xs text-slate-700 leading-relaxed font-medium mt-1">
+                            {selectedStudent.sosial}
+                          </p>
+                        </div>
+
+                        {/* Prestasi Non-Akademik */}
+                        <div className="border border-yellow-200 bg-yellow-50/10 rounded-xl p-4 h-[105px] flex flex-col justify-between">
+                          <h4 className="text-xs font-black text-yellow-800 uppercase tracking-wider">Prestasi Non-Akademik</h4>
+                          <p className="text-xs text-slate-700 leading-relaxed font-medium mt-1">
+                            {selectedStudent.prestasi}
+                          </p>
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div> {/* END PAGE 1 */}
+
+
+              {/* PAGE 2 OF THE REPORT CARD */}
+              <div className="print-page bg-white max-w-[210mm] mx-auto p-12 shadow-md border border-slate-200 relative overflow-hidden">
+                
+                {/* Center Large Transparent Watermark */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] pointer-events-none opacity-[0.04] flex items-center justify-center z-0">
+                  <img src="https://iili.io/FsLlXA7.png" alt="Watermark" className="w-full h-full object-contain" />
+                </div>
+
+                <div className="relative z-10 flex flex-col h-full justify-between">
+                  {/* Header (Keep minimal for page 2 but elegant) */}
+                  <div>
+                    <div className="border-b border-slate-200 pb-3 mb-6">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-500">Lanjutan Rapor Perkembangan Holistik Santri</span>
+                        <span className="text-xs font-bold text-[#2b3990]">{selectedStudent.nama} ({selectedStudent.nis})</span>
+                      </div>
+                    </div>
+
+                    {/* Content Box 1: Fokus Kelas Selanjutnya (Updated) */}
+                    <div className="mb-6">
+                      <div className="border-2 border-dashed border-indigo-300 bg-indigo-50/10 rounded-xl p-5">
+                        <h4 className="text-sm font-black text-indigo-950 tracking-wider mb-2">Fokus Kelas Selanjutnya</h4>
+                        <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                          {selectedStudent.fokus}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Content Box 2: Pesan Wali Kelas dan Wali Kamar */}
+                    <div className="mb-10">
+                      <div className="border-2 border-dashed border-purple-300 bg-purple-50/10 rounded-xl p-5">
+                        <h4 className="text-sm font-black text-purple-950 tracking-wider mb-2">Pesan Wali Kelas dan Wali Kamar</h4>
+                        <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                          {selectedStudent.pesan_wali}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Signature Panel */}
+                  <div className="space-y-12">
+                    <div className="text-center text-xs">
+                      <p className="font-semibold text-slate-700">Tangerang, {globalTanggal}</p>
+                    </div>
+
+                    {/* Primary 2 Signatures */}
+                    <div className="grid grid-cols-2 gap-12 text-center text-xs">
+                      <div>
+                        <p className="text-slate-500 font-medium mb-20">Wali Kelas</p>
+                        <p className="font-extrabold text-slate-900 underline">
+                          {selectedStudent.wali_kelas || "Ustadz Maulana Azka, Lc."}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500 font-medium mb-20">Wali Kamar</p>
+                        <p className="font-extrabold text-slate-900 underline">
+                          {selectedStudent.wali_kamar || "Ustadz Ali Murtadlo"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Headmaster Signature Center-Aligned */}
+                    <div className="text-center text-xs pt-4">
+                      <p className="text-slate-500 font-medium mb-20">Kepala SMP</p>
+                      <p className="font-extrabold text-slate-900 underline">
+                        {selectedStudent.kepala_sekolah || "Ustadz Abd. Halim, S.S.I"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+              </div> {/* END PAGE 2 */}
+
+            </div>
+          )}
+
+          {/* TAB 2: SPREADSHEET DATABASE */}
+          {activeTab === 'database' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Database & Pengaturan Rapor Santri</h2>
+                    <p className="text-sm text-slate-500">Gunakan editor tabel ini atau salin-tempel langsung dari spreadsheet Excel/Sheets.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button 
+                      onClick={() => {
+                        setIsAddingNew(true);
+                        setEditingStudent({
+                          nama: "", nis: "", sas: 80, sat: 80, psikotes: "", progres_1s: "", 
+                          mapel_unggul: "", mapel_perlu: "", ibadah: "", tahfizh_juz: 0, 
+                          tahfizh_detail: "", disiplin: "", sosial: "", prestasi: "", fokus: "", pesan_wali: "",
+                          wali_kelas: "Ustadz Maulana Azka, Lc.",
+                          wali_kamar: "Ustadz Ali Murtadlo",
+                          kepala_sekolah: "Ustadz Abd. Halim, S.S.I"
+                        });
+                      }}
+                      className="px-4 py-2 bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-emerald-700 transition"
+                    >
+                      ➕ Tambah Baru
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setShowImportModal(true);
+                        setBulkImportText("");
+                      }}
+                      className="px-4 py-2 bg-indigo-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-indigo-700 transition"
+                    >
+                      📥 Impor Spreadsheet
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-700">
+                        <th className="p-3 font-semibold whitespace-nowrap">Nama Santri</th>
+                        <th className="p-3 font-semibold whitespace-nowrap">NIS</th>
+                        <th className="p-3 font-semibold whitespace-nowrap text-center">SAS</th>
+                        <th className="p-3 font-semibold whitespace-nowrap text-center">SAT</th>
+                        <th className="p-3 font-semibold whitespace-nowrap text-center">Tahfizh (Juz)</th>
+                        <th className="p-3 font-semibold whitespace-nowrap text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {students.map((student) => (
+                        <tr key={student.id} className="hover:bg-slate-50/50 transition">
+                          <td className="p-3 font-bold text-slate-900 whitespace-nowrap">{student.nama}</td>
+                          <td className="p-3 text-slate-600 whitespace-nowrap">{student.nis}</td>
+                          <td className="p-3 text-center font-bold text-[#2b3990]">{student.sas}</td>
+                          <td className="p-3 text-center font-bold text-[#4d5ec2]">{student.sat}</td>
+                          <td className="p-3 text-center text-teal-700 font-semibold">{student.tahfizh_juz} Juz</td>
+                          <td className="p-3 flex justify-center gap-2">
+                            <button 
+                              onClick={() => {
+                                setIsAddingNew(false);
+                                setEditingStudent(student);
+                              }}
+                              className="px-2 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-md hover:bg-slate-200"
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteStudent(student.id)}
+                              className="px-2 py-1 bg-rose-50 text-rose-600 text-xs font-bold rounded-md hover:bg-rose-100"
+                            >
+                              Hapus
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* SPREADSHEET BUILDER / INDIVIDUAL EDIT MODAL */}
+      {editingStudent && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900 border-b pb-2">
+              {isAddingNew ? "➕ Tambah Data Santri Baru" : "✏️ Edit Detail Rapor"}
+            </h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 sm:col-span-1">
+                <label className="block text-xs font-bold text-slate-500 mb-1">Nama Lengkap</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.nama} 
+                  onChange={(e) => setEditingStudent({...editingStudent, nama: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                />
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <label className="block text-xs font-bold text-slate-500 mb-1">NIS / Kelas</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.nis} 
+                  onChange={(e) => setEditingStudent({...editingStudent, nis: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">SAS (Nilai Semester Ganjil)</label>
+                <input 
+                  type="number" 
+                  value={editingStudent.sas} 
+                  onChange={(e) => setEditingStudent({...editingStudent, sas: Number(e.target.value)})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-[#2b3990]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">SAT (Nilai Semester Genap)</label>
+                <input 
+                  type="number" 
+                  value={editingStudent.sat} 
+                  onChange={(e) => setEditingStudent({...editingStudent, sat: Number(e.target.value)})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-indigo-700"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Jumlah Juz (Angka)</label>
+                <input 
+                  type="number" 
+                  value={editingStudent.tahfizh_juz} 
+                  onChange={(e) => setEditingStudent({...editingStudent, tahfizh_juz: Number(e.target.value)})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-teal-700"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Keterangan Juz Al-Qur'an</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.tahfizh_detail} 
+                  onChange={(e) => setEditingStudent({...editingStudent, tahfizh_detail: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1">Hasil Psikotes</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.psikotes} 
+                  onChange={(e) => setEditingStudent({...editingStudent, psikotes: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1">Progres 1 Semester (Kognitif)</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.progres_1s} 
+                  onChange={(e) => setEditingStudent({...editingStudent, progres_1s: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Mata Pelajaran Unggul</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.mapel_unggul} 
+                  onChange={(e) => setEditingStudent({...editingStudent, mapel_unggul: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Perlu Peningkatan</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.mapel_perlu} 
+                  onChange={(e) => setEditingStudent({...editingStudent, mapel_perlu: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                />
+              </div>
+              
+              {/* Dynamic Signatures Inputs */}
+              <div className="col-span-2 border-t pt-3 mt-1">
+                <h4 className="text-xs font-bold uppercase text-indigo-800 tracking-wider mb-2">Penandatangan Rapor Santri Ini</h4>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Nama Wali Kelas</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.wali_kelas || ""} 
+                  onChange={(e) => setEditingStudent({...editingStudent, wali_kelas: e.target.value})}
+                  className="w-full p-2.5 bg-indigo-50/50 border border-slate-200 rounded-lg text-sm font-semibold"
+                  placeholder="Ustadz Maulana Azka, Lc."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Nama Wali Kamar</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.wali_kamar || ""} 
+                  onChange={(e) => setEditingStudent({...editingStudent, wali_kamar: e.target.value})}
+                  className="w-full p-2.5 bg-indigo-50/50 border border-slate-200 rounded-lg text-sm font-semibold"
+                  placeholder="Ustadz Ali Murtadlo"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1">Nama Kepala Sekolah (SMP)</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.kepala_sekolah || ""} 
+                  onChange={(e) => setEditingStudent({...editingStudent, kepala_sekolah: e.target.value})}
+                  className="w-full p-2.5 bg-indigo-50/50 border border-slate-200 rounded-lg text-sm font-semibold"
+                  placeholder="Ustadz Abd. Halim, S.S.I"
+                />
+              </div>
+
+              <div className="col-span-2 border-t pt-3">
+                <label className="block text-xs font-bold text-slate-500 mb-1">Observasi Ibadah Harian</label>
+                <textarea 
+                  value={editingStudent.ibadah} 
+                  onChange={(e) => setEditingStudent({...editingStudent, ibadah: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm h-16 resize-none"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1">Sikap dan Disiplin</label>
+                <textarea 
+                  value={editingStudent.disiplin} 
+                  onChange={(e) => setEditingStudent({...editingStudent, disiplin: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm h-16 resize-none"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1">Sosial & Kepemimpinan</label>
+                <textarea 
+                  value={editingStudent.sosial} 
+                  onChange={(e) => setEditingStudent({...editingStudent, sosial: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm h-16 resize-none"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1">Prestasi Non-Akademik</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.prestasi} 
+                  onChange={(e) => setEditingStudent({...editingStudent, prestasi: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                />
+              </div>
+              <div className="col-span-2">
+                {/* Updated Label in Modal */}
+                <label className="block text-xs font-bold text-slate-500 mb-1">Fokus Kelas Selanjutnya</label>
+                <textarea 
+                  value={editingStudent.fokus} 
+                  onChange={(e) => setEditingStudent({...editingStudent, fokus: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm h-16 resize-none"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1">Pesan Wali Kelas & Kamar</label>
+                <textarea 
+                  value={editingStudent.pesan_wali} 
+                  onChange={(e) => setEditingStudent({...editingStudent, pesan_wali: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm h-16 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <button 
+                onClick={() => {
+                  setEditingStudent(null);
+                  setIsAddingNew(false);
+                }}
+                className="px-4 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 rounded-lg transition"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={() => handleSaveStudent(editingStudent)}
+                className="px-4 py-2 text-sm font-semibold text-white bg-[#2b3990] hover:bg-[#1f2a70] rounded-lg transition shadow"
+              >
+                Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EXCEL/SHEETS IMPORT MODAL */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 space-y-4">
+            <div className="flex justify-between items-start border-b pb-2">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">📥 Impor dari Excel / Google Sheets</h3>
+                <p className="text-xs text-slate-500">Salin kolom dari spreadsheet Anda lalu tempel di bawah ini.</p>
+              </div>
+              <button 
+                onClick={getTemplateTSV}
+                className="text-xs bg-indigo-50 text-indigo-700 font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition"
+              >
+                Ambil Template Contoh
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <textarea 
+                placeholder="Tempel baris spreadsheet Anda di sini..."
+                value={bulkImportText} 
+                onChange={(e) => setBulkImportText(e.target.value)}
+                className="w-full h-64 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono resize-none focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex justify-between items-center pt-4 border-t">
+              <span className="text-xs text-slate-400">Pastikan baris pertama berisi tajuk (header) kolom.</span>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setShowImportModal(false)}
+                  className="px-4 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 rounded-lg transition"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleImportTSV}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-[#2b3990] hover:bg-[#1f2a70] rounded-lg transition shadow"
+                >
+                  Proses & Impor
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM DIALOG ALERT & CONFIRM MODAL (Complies with no-browser-alerts rule) */}
+      {alertConfig && (
+        <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm z-[100] flex items-center justify-center p-4 no-print">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 text-center border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-xl">
+              {alertConfig.type === 'confirm' ? '❓' : '💡'}
+            </div>
+            <div>
+              <h3 className="text-md font-extrabold text-slate-900">{alertConfig.title}</h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">{alertConfig.message}</p>
+            </div>
+            <div className="flex justify-center gap-2 pt-2">
+              {alertConfig.type === 'confirm' && (
+                <button
+                  onClick={() => setAlertConfig(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-xl transition"
+                >
+                  Batal
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (alertConfig.type === 'confirm' && alertConfig.onConfirm) {
+                    alertConfig.onConfirm();
+                  }
+                  setAlertConfig(null);
+                }}
+                className="px-5 py-2.5 bg-[#2b3990] hover:bg-[#1f2a70] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition shadow-sm"
+              >
+                {alertConfig.type === 'confirm' ? 'Ya, Hapus' : 'Selesai'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Footer (Hidden during printing) */}
+      <footer className="bg-slate-900 text-slate-400 py-4 text-center text-xs print:hidden border-t border-slate-800">
+        <p>© 2026 MALIKA ISLAMIC BOARDING SCHOOL • Tangerang, Banten</p>
+      </footer>
+    </div>
+  );
+}
