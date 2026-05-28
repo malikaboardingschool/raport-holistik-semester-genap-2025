@@ -475,19 +475,6 @@
 
           {/* Main Content Area */}
           <div className="flex-grow max-w-4xl mx-auto w-full p-4 print:p-0">
-            
-            {/* Helper Notification Banner for iframe prints */}
-            {activeTab === 'report' && (
-              <div className="no-print bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4 text-xs text-amber-900 flex items-start gap-2.5">
-                <span className="text-base">💡</span>
-                <div>
-                  <p className="font-bold">Tips Cetak Rapor (PDF A4 Presisi):</p>
-                  <p className="mt-0.5 leading-relaxed">
-                    Untuk mencetak, silakan klik tombol <strong>Cetak Rapor (PDF)</strong> di kanan atas. Jika menu print terblokir, silakan klik kanan area kertas putih rapor di bawah, lalu pilih <strong>"Print Frame..."</strong> atau tekan tombol kombinasi <strong>Ctrl + P</strong> (<strong>Cmd + P</strong> di Mac).
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* GLOBAL SETTINGS PANEL */}
             {activeTab === 'report' && (
@@ -530,22 +517,25 @@
 
             {/* TOP CONTROL NAVIGATION DECK */}
             {activeTab === 'report' && students.length > 0 && (
-              <div className="no-print bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="no-print bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
                 
-                {/* Prev/Next Cycler controls */}
-                <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                {/* Prev/Next Cycler controls with Unified Heights & Custom Arrow Icons */}
+                <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
                   <button 
                     onClick={handlePrev}
-                    className="px-4 py-2 bg-[#2b3990] hover:bg-[#1f2a70] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                    className="h-10 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 border border-slate-200"
                   >
-                    ⬅️ Sebelum
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                    </svg>
+                    Sebelumnya
                   </button>
 
-                  <div className="flex flex-col items-center">
+                  <div className="relative">
                     <select 
                       value={selectedStudentId}
                       onChange={(e) => setSelectedStudentId(e.target.value)}
-                      className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#2b3990]"
+                      className="h-10 pl-3 pr-8 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#2b3990] appearance-none cursor-pointer"
                     >
                       {students.map((s, idx) => (
                         <option key={s.id} value={s.id}>
@@ -553,28 +543,54 @@
                         </option>
                       ))}
                     </select>
-                    <span className="text-[10px] font-bold text-slate-400 mt-1">
-                      Santri {currentIndex + 1} dari {students.length}
-                    </span>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none text-slate-400">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+                      </svg>
+                    </div>
                   </div>
 
                   <button 
                     onClick={handleNext}
-                    className="px-4 py-2 bg-[#2b3990] hover:bg-[#1f2a70] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                    className="h-10 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 border border-slate-200"
                   >
-                    Selanjutnya ➡️
+                    Berikutnya
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                    </svg>
                   </button>
+
+                  <span className="hidden sm:inline-block text-xs font-semibold text-slate-400 ml-2">
+                    Santri {currentIndex + 1} dari {students.length}
+                  </span>
                 </div>
 
-                {/* Quick Actions Panel */}
-                <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
+                {/* Quick Actions Panel with Professional Icons & Matching Heights */}
+                <div className="flex flex-wrap gap-2 w-full md:w-auto justify-end">
                   <button 
                     onClick={handleDownloadExcel}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition shadow flex items-center gap-1.5"
+                    className="h-10 px-3.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-lg transition border border-blue-200 flex items-center gap-2"
                     title="Unduh seluruh data siswa dalam format Excel (.csv)"
                   >
-                    💾 Unduh Excel
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9.75v6.75m0 0l-3-3m3 3l3-3m-8.25 6a9 9 0 1116.5 0"/>
+                    </svg>
+                    Unduh Excel
                   </button>
+                  
+                  <button 
+                    onClick={() => {
+                      setIsAddingNew(false);
+                      setEditingStudent(selectedStudent);
+                    }}
+                    className="h-10 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition border border-slate-200 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/>
+                    </svg>
+                    Edit Data
+                  </button>
+
                   <button 
                     onClick={() => {
                       setIsAddingNew(true);
@@ -587,24 +603,22 @@
                         kepala_sekolah: "Ustadz Abd. Halim, S.S.I"
                       });
                     }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition shadow"
+                    className="h-10 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg transition border border-emerald-200 flex items-center gap-2"
                   >
-                    ➕ Tambah Santri
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Tambah Santri
                   </button>
-                  <button 
-                    onClick={() => {
-                      setIsAddingNew(false);
-                      setEditingStudent(selectedStudent);
-                    }}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider rounded-xl transition"
-                  >
-                    ✏️ Edit Data
-                  </button>
+
                   <button 
                     onClick={handlePrint}
-                    className="px-5 py-2.5 bg-[#2b3990] hover:bg-[#1f2a70] text-white font-bold text-xs uppercase tracking-widest rounded-xl transition shadow flex items-center gap-1.5"
+                    className="h-10 px-4 bg-[#2b3990] hover:bg-[#1f2a70] text-white font-extrabold text-xs uppercase tracking-wider rounded-lg transition shadow-md flex items-center gap-2"
                   >
-                    🖨️ Cetak Rapor (PDF)
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-14.326 0C3.768 7.28 3 8.213 3 9.456V15.75a2.25 2.25 0 002.25 2.25h1.091M9 9h6m-6 3h6"/>
+                    </svg>
+                    Cetak Rapor (PDF)
                   </button>
                 </div>
               </div>
