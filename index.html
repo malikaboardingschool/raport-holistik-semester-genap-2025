@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot } from 'firebase/firestore';
 
-// Default Demo Data based on the uploaded report & additional realistic data (used for Cloud Seeding)
+// Default Demo Data based on the uploaded report & additional realistic data
 const initialStudents = [
   {
     id: "1",
@@ -73,29 +70,25 @@ const initialStudents = [
   }
 ];
 
-// Firebase Global variables provided by runtime environment
-const firebaseConfig = typeof __firebase_config !== 'undefined' 
-  ? JSON.parse(__firebase_config) 
-  : { apiKey: "" }; // Fallback
-
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-// Initialize Firebase SDK services
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Load initial students data from localStorage or fallback to defaults
+  const [students, setStudents] = useState(() => {
+    const saved = localStorage.getItem('malika_rapor_students');
+    return saved ? JSON.parse(saved) : initialStudents;
+  });
 
-  // Global Settings State for Semester and Date (Shared across all students in Cloud)
-  const [globalSemester, setGlobalSemester] = useState("Ganjil 2025/2026");
-  const [globalTanggal, setGlobalTanggal] = useState("19 Desember 2025");
+  // Global Settings State for Semester and Date (Shared across all students in LocalStorage)
+  const [globalSemester, setGlobalSemester] = useState(() => {
+    return localStorage.getItem('malika_rapor_semester') || "Ganjil 2025/2026";
+  });
+  const [globalTanggal, setGlobalTanggal] = useState(() => {
+    return localStorage.getItem('malika_rapor_tanggal') || "19 Desember 2025";
+  });
 
   const [activeTab, setActiveTab] = useState('report'); // report, database
-  const [selectedStudentId, setSelectedStudentId] = useState("1");
+  const [selectedStudentId, setSelectedStudentId] = useState(() => {
+    return students[0]?.id || "1";
+  });
   const [bulkImportText, setBulkImportText] = useState("");
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
@@ -104,79 +97,18 @@ export default function App() {
   // Custom dialog alert & confirmation state to replace window.alert / window.confirm
   const [alertConfig, setAlertConfig] = useState(null);
 
-  // Step 1: Handle Authentication FIRST (Strict compliance with Rule 3)
+  // Sync data to localStorage automatically when state changes
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (error) {
-        console.error("Auth error:", error);
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (usr) => {
-      setUser(usr);
-    });
-    return () => unsubscribe();
-  }, []);
+    localStorage.setItem('malika_rapor_students', JSON.stringify(students));
+  }, [students]);
 
-  // Step 2: Sync with Cloud Firestore upon successful Auth (Strict compliance with Rule 1 & 2)
   useEffect(() => {
-    if (!user) return;
+    localStorage.setItem('malika_rapor_semester', globalSemester);
+  }, [globalSemester]);
 
-    // 1. Sync Students Collection (Simple query - Rule 2 / Strict public path - Rule 1)
-    const studentsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'students');
-    const unsubStudents = onSnapshot(studentsColRef, (snapshot) => {
-      const studentList = [];
-      snapshot.forEach((docSnap) => {
-        studentList.push({ id: docSnap.id, ...docSnap.data() });
-      });
-
-      if (studentList.length === 0) {
-        // DB is empty: Seed default student data
-        initialStudents.forEach(async (student) => {
-          const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id);
-          await setDoc(studentDocRef, student);
-        });
-      } else {
-        setStudents(studentList);
-        setLoading(false);
-        // Ensure selectedStudentId is always valid
-        if (!studentList.some(s => s.id === selectedStudentId)) {
-          setSelectedStudentId(studentList[0].id);
-        }
-      }
-    }, (error) => {
-      console.error("Students Firestore subscription error:", error);
-    });
-
-    // 2. Sync Global Settings Document (Strict public path - Rule 1)
-    const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'configs', 'settings');
-    const unsubConfig = onSnapshot(configDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.semester) setGlobalSemester(data.semester);
-        if (data.tanggal) setGlobalTanggal(data.tanggal);
-      } else {
-        // Seed initial configurations
-        setDoc(configDocRef, {
-          semester: "Ganjil 2025/2026",
-          tanggal: "19 Desember 2025"
-        });
-      }
-    }, (error) => {
-      console.error("Configs Firestore subscription error:", error);
-    });
-
-    return () => {
-      unsubStudents();
-      unsubConfig();
-    };
-  }, [user]);
+  useEffect(() => {
+    localStorage.setItem('malika_rapor_tanggal', globalTanggal);
+  }, [globalTanggal]);
 
   const selectedStudent = students.find(s => s.id === selectedStudentId) || students[0] || null;
 
@@ -210,13 +142,10 @@ export default function App() {
     }
   };
 
-  // Push updates instantly to Firestore Cloud Storage
-  const handleSaveStudent = async (studentData) => {
-    if (!user) return;
+  // Save/Update student data locally
+  const handleSaveStudent = (studentData) => {
     const studentId = isAddingNew ? Date.now().toString() : studentData.id;
-    const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId);
-
-    const payload = {
+    const updatedPayload = {
       ...studentData,
       id: studentId,
       sas: Number(studentData.sas) || 80,
@@ -224,55 +153,93 @@ export default function App() {
       tahfizh_juz: Number(studentData.tahfizh_juz) || 0
     };
 
-    try {
-      await setDoc(studentDocRef, payload);
+    if (isAddingNew) {
+      setStudents([...students, updatedPayload]);
       setSelectedStudentId(studentId);
-      setEditingStudent(null);
-      setIsAddingNew(false);
-    } catch (error) {
-      triggerAlert("Gagal menyimpan data ke cloud storage: " + error.message, "Penyimpanan Gagal");
+    } else {
+      setStudents(students.map(s => s.id === studentId ? updatedPayload : s));
     }
+    setEditingStudent(null);
+    setIsAddingNew(false);
   };
 
-  // Delete student directly from Cloud Storage
+  // Delete student from local state
   const handleDeleteStudent = (id) => {
-    triggerConfirm("Apakah Anda yakin ingin menghapus data santri ini secara permanen dari Cloud Database?", async () => {
-      if (!user) return;
-      try {
-        const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', id);
-        await deleteDoc(studentDocRef);
-      } catch (error) {
-        triggerAlert("Gagal menghapus data dari cloud storage: " + error.message, "Penghapusan Gagal");
+    triggerConfirm("Apakah Anda yakin ingin menghapus data santri ini secara permanen?", () => {
+      const filtered = students.filter(s => s.id !== id);
+      setStudents(filtered);
+      if (selectedStudentId === id && filtered.length > 0) {
+        setSelectedStudentId(filtered[0].id);
       }
     });
   };
 
-  // Save updated global configurations to Cloud Firestore
-  const updateGlobalSemester = async (val) => {
-    setGlobalSemester(val);
-    if (!user) return;
-    try {
-      const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'configs', 'settings');
-      await setDoc(configDocRef, { semester: val }, { merge: true });
-    } catch (error) {
-      console.error("Gagal menyinkronkan data semester ke cloud:", error);
+  // Download All Students Database directly as Excel-compatible CSV
+  const handleDownloadExcel = () => {
+    if (students.length === 0) {
+      triggerAlert("Tidak ada data siswa untuk diunduh.", "Data Kosong");
+      return;
     }
+
+    const headers = [
+      "Nama Lengkap", "NIS/Kelas", "Nilai SAS (Ganjil)", "Nilai SAT (Genap)", 
+      "Hasil Psikotes", "Progres 1 Semester", "Mapel Unggul", "Mapel Perlu Peningkatan", 
+      "Observasi Ibadah Harian", "Tahfizh (Juz)", "Keterangan Tahfizh", "Sikap dan Disiplin", 
+      "Sosial dan Kepemimpinan", "Prestasi Non-Akademik", "Fokus Kelas Selanjutnya", "Pesan Wali Kelas",
+      "Wali Kelas", "Wali Kamar", "Kepala Sekolah"
+    ];
+
+    const rows = students.map(s => [
+      s.nama || "",
+      s.nis || "",
+      s.sas || 80,
+      s.sat || 80,
+      s.psikotes || "",
+      s.progres_1s || "",
+      s.mapel_unggul || "",
+      s.mapel_perlu || "",
+      s.ibadah || "",
+      s.tahfizh_juz || 0,
+      s.tahfizh_detail || "",
+      s.disiplin || "",
+      s.sosial || "",
+      s.prestasi || "",
+      s.fokus || "",
+      s.pesan_wali || "",
+      s.wali_kelas || "Ustadz Maulana Azka, Lc.",
+      s.wali_kamar || "Ustadz Ali Murtadlo",
+      s.kepala_sekolah || "Ustadz Abd. Halim, S.S.I"
+    ]);
+
+    const escapeCSV = (val) => {
+      if (val === undefined || val === null) return '';
+      let str = String(val);
+      str = str.replace(/"/g, '""'); // Escape double quotes
+      if (str.includes(',') || str.includes('\n') || str.includes('\r') || str.includes('"') || str.includes(';')) {
+        return `"${str}"`;
+      }
+      return str;
+    };
+
+    const csvContent = "\uFEFF" + [
+      headers.join(";"),
+      ...rows.map(r => r.map(escapeCSV).join(";"))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const sanitizedSemesterName = globalSemester.replace(/[\/\s]/g, '_');
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `database_rapor_malika_${sanitizedSemesterName}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const updateGlobalTanggal = async (val) => {
-    setGlobalTanggal(val);
-    if (!user) return;
-    try {
-      const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'configs', 'settings');
-      await setDoc(configDocRef, { tanggal: val }, { merge: true });
-    } catch (error) {
-      console.error("Gagal menyinkronkan data tanggal ke cloud:", error);
-    }
-  };
-
-  // Process and push bulk imports to Cloud Firestore
-  const handleImportTSV = async () => {
-    if (!user) return;
+  // Process TSV/Spreadsheet imports locally
+  const handleImportTSV = () => {
     try {
       const lines = bulkImportText.trim().split("\n");
       if (lines.length < 2) {
@@ -339,17 +306,12 @@ export default function App() {
         newStudents.push(rowObj);
       }
 
-      // Save each imported student into Firestore Cloud
-      for (const student of newStudents) {
-        const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id);
-        await setDoc(studentDocRef, student);
-      }
-
+      setStudents([...students, ...newStudents]);
       setShowImportModal(false);
       setBulkImportText("");
-      triggerAlert(`Berhasil mengimpor ${newStudents.length} data santri baru ke dalam Cloud Database secara aman.`, "Impor Sukses");
+      triggerAlert(`Berhasil mengimpor ${newStudents.length} data santri ke dalam sistem.`, "Impor Sukses");
     } catch (err) {
-      triggerAlert("Format data spreadsheet tidak valid atau gagal melakukan sinkronisasi dengan cloud database: " + err.message, "Kesalahan Impor");
+      triggerAlert("Format data spreadsheet tidak valid. Pastikan Anda telah menyalin tabel baris data dari Google Sheets / Excel secara lengkap.", "Kesalahan Impor");
     }
   };
 
@@ -374,28 +336,6 @@ export default function App() {
   };
 
   const progress = selectedStudent ? calculateChange(selectedStudent) : { percent: "0", positive: true };
-
-  // Premium loading view while connecting to Firestore database
-  if (loading && students.length === 0) {
-    return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full text-center space-y-4 border border-slate-200">
-          <div className="w-16 h-16 bg-indigo-50 text-[#2b3990] rounded-full flex items-center justify-center mx-auto text-3xl animate-bounce">
-            ☁️
-          </div>
-          <div>
-            <h3 className="text-lg font-black text-slate-900">Menghubungkan ke Cloud...</h3>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-              Mohon tunggu sebentar, sistem sedang mengamankan sambungan database terpusat Malika Islamic Boarding School.
-            </p>
-          </div>
-          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-            <div className="bg-[#2b3990] h-full rounded-full animate-pulse" style={{ width: '100%' }}></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-800">
@@ -504,18 +444,18 @@ export default function App() {
           </div>
         )}
 
-        {/* GLOBAL SETTINGS PANEL - Synced in real-time with Cloud Storage */}
+        {/* NEW GLOBAL SETTINGS PANEL (Semester & Date - Accessible and synchronized for all students) */}
         {activeTab === 'report' && (
           <div className="no-print bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
                   <h4 className="text-xs font-black text-[#2b3990] uppercase tracking-wider">⚙️ Pengaturan Global (Semua Santri)</h4>
-                  <span className="text-[9px] bg-indigo-100 text-indigo-800 font-extrabold px-1.5 py-0.5 rounded flex items-center gap-1 animate-pulse">
-                    <span>☁️</span> Cloud Terhubung
+                  <span className="text-[9px] bg-emerald-50 text-emerald-800 font-extrabold px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <span>💾</span> Penyimpanan Lokal Aktif
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Nilai semester dan tanggal laporan di bawah ini akan diterapkan secara seragam ke seluruh berkas santri di database cloud.</p>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Nilai semester dan tanggal laporan di bawah ini akan diterapkan secara seragam ke seluruh berkas santri di database lokal Anda.</p>
               </div>
               <div className="flex flex-wrap sm:flex-nowrap gap-3 w-full md:w-auto">
                 <div className="w-1/2 md:w-40">
@@ -523,7 +463,7 @@ export default function App() {
                   <input 
                     type="text" 
                     value={globalSemester}
-                    onChange={(e) => updateGlobalSemester(e.target.value)}
+                    onChange={(e) => setGlobalSemester(e.target.value)}
                     placeholder="Ganjil 2025/2026"
                     className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-[#2b3990] focus:outline-none"
                   />
@@ -533,7 +473,7 @@ export default function App() {
                   <input 
                     type="text" 
                     value={globalTanggal}
-                    onChange={(e) => updateGlobalTanggal(e.target.value)}
+                    onChange={(e) => setGlobalTanggal(e.target.value)}
                     placeholder="19 Desember 2025"
                     className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-[#2b3990] focus:outline-none"
                   />
@@ -582,7 +522,14 @@ export default function App() {
             </div>
 
             {/* Quick Actions Panel */}
-            <div className="flex gap-2 w-full sm:w-auto justify-end">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
+              <button 
+                onClick={handleDownloadExcel}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition shadow flex items-center gap-1.5"
+                title="Unduh seluruh data siswa dalam format Excel (.csv)"
+              >
+                💾 Unduh Excel
+              </button>
               <button 
                 onClick={() => {
                   setIsAddingNew(true);
@@ -840,7 +787,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Content Box 1: Fokus Kelas Selanjutnya (Updated) */}
+                    {/* Content Box 1: Fokus Kelas Selanjutnya */}
                     <div className="mb-6">
                       <div className="border-2 border-dashed border-indigo-300 bg-indigo-50/10 rounded-xl p-5">
                         <h4 className="text-sm font-black text-indigo-950 tracking-wider mb-2">Fokus Kelas Selanjutnya</h4>
@@ -905,9 +852,15 @@ export default function App() {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">Database & Pengaturan Rapor Santri</h2>
-                    <p className="text-sm text-slate-500">Gunakan editor tabel ini atau salin-tempel langsung dari spreadsheet Excel/Sheets.</p>
+                    <p className="text-sm text-slate-500">Gunakan editor tabel ini, salin-tempel dari spreadsheet, atau ekspor data ke Excel.</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <button 
+                      onClick={handleDownloadExcel}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition shadow flex items-center gap-1.5"
+                    >
+                      💾 Unduh Database (Excel / CSV)
+                    </button>
                     <button 
                       onClick={() => {
                         setIsAddingNew(true);
@@ -1155,7 +1108,6 @@ export default function App() {
                 />
               </div>
               <div className="col-span-2">
-                {/* Updated Label in Modal */}
                 <label className="block text-xs font-bold text-slate-500 mb-1">Fokus Kelas Selanjutnya</label>
                 <textarea 
                   value={editingStudent.fokus} 
