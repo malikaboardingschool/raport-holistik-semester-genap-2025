@@ -20,6 +20,62 @@
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
+    
+    @page {
+      size: A4;
+      margin: 0 !important;
+    }
+    
+    @media print {
+      /* Force light background colors & text clarity */
+      html, body {
+        background-color: white !important;
+        color: black !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      /* Hide parent application elements */
+      header, .no-print, .print-hidden, button, select, footer, input {
+        display: none !important;
+      }
+      
+      /* Neutralize wrappers */
+      .min-h-screen, .flex-grow, .max-w-4xl, .mx-auto, .p-4, .space-y-6 {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        background: transparent !important;
+      }
+
+      /* Lock target document exact to A4 */
+      .print-page {
+        width: 210mm !important;
+        height: 297mm !important;
+        min-height: 297mm !important;
+        padding: 15mm !important; /* Premium safe padding */
+        margin: 0 auto !important;
+        box-sizing: border-box !important;
+        page-break-after: always !important;
+        page-break-inside: avoid !important;
+        background: white !important;
+        border: none !important;
+        box-shadow: none !important;
+        position: relative !important;
+        overflow: hidden !important;
+      }
+      
+      /* Prevent blank trailing page */
+      .print-page:last-child {
+        page-break-after: avoid !important;
+      }
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
@@ -370,55 +426,6 @@
 
       return (
         <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-800">
-          
-          {/* Dynamic Printing Style overrides to secure exactly 2 A4 pages */}
-          <style>{`
-            @page {
-              size: A4;
-              margin: 0 !important;
-            }
-            @media print {
-              html, body {
-                background-color: white !important;
-                color: black !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                width: 210mm !important;
-                height: 297mm !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-              header, .no-print, .print-hidden, button, select, footer, input {
-                display: none !important;
-              }
-              .min-h-screen, .flex-grow, .max-w-4xl, .mx-auto, .p-4, .space-y-6 {
-                padding: 0 !important;
-                margin: 0 !important;
-                max-width: none !important;
-                width: 100% !important;
-                box-shadow: none !important;
-                background: transparent !important;
-              }
-              .print-page {
-                width: 210mm !important;
-                height: 297mm !important;
-                min-height: 297mm !important;
-                padding: 15mm !important;
-                margin: 0 auto !important;
-                box-sizing: border-box !important;
-                page-break-after: always !important;
-                page-break-inside: avoid !important;
-                background: white !important;
-                border: none !important;
-                box-shadow: none !important;
-                position: relative !important;
-                overflow: hidden !important;
-              }
-              .print-page:last-child {
-                page-break-after: avoid !important;
-              }
-            }
-          `}</style>
 
           {/* Navbar */}
           <header className="bg-[#2b3990] text-white shadow-md print:hidden">
@@ -460,7 +467,7 @@
                 <div>
                   <p className="font-bold">Tips Cetak Rapor (PDF A4 Presisi):</p>
                   <p className="mt-0.5 leading-relaxed">
-                    Jika browser Anda memblokir tombol cetak di dalam iframe, silakan klik kanan area kertas putih rapor di bawah, lalu pilih <strong>"Print Frame..."</strong> atau tekan tombol kombinasi <strong>Ctrl + P</strong> (<strong>Cmd + P</strong> di Mac) untuk membuka menu cetak PDF default dengan instan.
+                    Untuk mencetak, silakan klik tombol <strong>Cetak Rapor (PDF)</strong> di kanan atas. Jika menu print terblokir, silakan klik kanan area kertas putih rapor di bawah, lalu pilih <strong>"Print Frame..."</strong> atau tekan tombol kombinasi <strong>Ctrl + P</strong> (<strong>Cmd + P</strong> di Mac).
                   </p>
                 </div>
               </div>
