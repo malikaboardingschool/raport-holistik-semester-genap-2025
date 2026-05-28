@@ -75,6 +75,22 @@
       .print-page:last-child {
         page-break-after: avoid !important;
       }
+
+      /* FORCE 2-COLUMN GRID ON PRINT PREVIEW */
+      .grid-cols-print-2 {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 16px !important;
+      }
+
+      /* Lock exact heights during print to prevent page overflow */
+      .h-print-230 {
+        height: 230px !important;
+      }
+      
+      .h-print-105 {
+        height: 105px !important;
+      }
     }
   </style>
 </head>
@@ -602,7 +618,7 @@
                 <div className="space-y-6">
                   
                   {/* PAGE 1 OF THE REPORT CARD */}
-                  <div className="print-page bg-white max-w-[210mm] mx-auto p-12 shadow-md border border-slate-200 relative overflow-hidden">
+                  <div className="print-page bg-white max-w-[210mm] mx-auto p-12 print:p-[15mm] shadow-md border border-slate-200 relative overflow-hidden">
                     
                     {/* Center Large Transparent Watermark */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] pointer-events-none opacity-[0.04] flex items-center justify-center z-0">
@@ -651,11 +667,11 @@
                             <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">AKADEMIK DAN PERKEMBANGAN DIRI</h3>
                           </div>
 
-                          {/* Two-Column Core Layout */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          {/* Two-Column Core Layout (Print Optimized) */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 grid-cols-print-2 gap-4 mb-4">
                             
                             {/* SAS & SAT Comparison Block */}
-                            <div className="border border-slate-200 rounded-xl p-4 bg-white flex flex-col justify-between h-[230px]">
+                            <div className="border border-slate-200 rounded-xl p-4 bg-white flex flex-col justify-between h-[230px] h-print-230">
                               <div>
                                 <h4 className="text-xs font-black text-[#2b3990] uppercase tracking-wider mb-3">Perbandingan Nilai Rata-rata</h4>
                                 
@@ -696,7 +712,7 @@
                             </div>
 
                             {/* Progres Perkembangan Diri */}
-                            <div className="border border-slate-200 rounded-xl p-4 bg-white flex flex-col gap-3 h-[230px]">
+                            <div className="border border-slate-200 rounded-xl p-4 bg-white flex flex-col gap-3 h-[230px] h-print-230">
                               <h4 className="text-xs font-black text-[#2b3990] uppercase tracking-wider mb-1">Progres Perkembangan Diri</h4>
                               
                               {/* Psikotes */}
@@ -720,11 +736,11 @@
 
                           </div>
 
-                          {/* Lower Row: Daya Serap & Tahfizh */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Lower Row: Daya Serap & Tahfizh (Print Optimized) */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 grid-cols-print-2 gap-4">
                             
                             {/* Analisis Daya Serap */}
-                            <div className="border border-slate-200 rounded-xl p-4 bg-white h-[105px] flex flex-col justify-center">
+                            <div className="border border-slate-200 rounded-xl p-4 bg-white h-[105px] h-print-105 flex flex-col justify-center">
                               <h4 className="text-xs font-black text-[#2b3990] uppercase tracking-wider mb-2">Analisis Daya Serap</h4>
                               <div className="space-y-1 text-xs">
                                 <div>
@@ -739,7 +755,7 @@
                             </div>
 
                             {/* Tahfizh Qur'an */}
-                            <div className="border border-teal-200 rounded-xl p-4 bg-teal-50/20 h-[105px] flex flex-col justify-center">
+                            <div className="border border-teal-200 rounded-xl p-4 bg-teal-50/20 h-[105px] h-print-105 flex flex-col justify-center">
                               <h4 className="text-xs font-black text-teal-800 uppercase tracking-wider mb-1">Tahfizh Qur'an</h4>
                               <p className="text-sm font-extrabold text-slate-800 leading-snug">
                                 {selectedStudent.tahfizh_detail}
@@ -756,10 +772,11 @@
                             <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">KARAKTER DAN KEMATANGAN DIRI</h3>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* 4 Cards Grid (Print Optimized) */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 grid-cols-print-2 gap-4">
                             
                             {/* Ibadah Harian */}
-                            <div className="border border-blue-200 bg-blue-50/10 rounded-xl p-4 h-[105px] flex flex-col justify-between">
+                            <div className="border border-blue-200 bg-blue-50/10 rounded-xl p-4 h-[105px] h-print-105 flex flex-col justify-between">
                               <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider">Ibadah Harian</h4>
                               <p className="text-xs text-slate-700 leading-relaxed font-medium mt-1">
                                 {selectedStudent.ibadah}
@@ -767,7 +784,7 @@
                             </div>
 
                             {/* Sikap dan Disiplin */}
-                            <div className="border border-rose-200 bg-rose-50/10 rounded-xl p-4 h-[105px] flex flex-col justify-between">
+                            <div className="border border-rose-200 bg-rose-50/10 rounded-xl p-4 h-[105px] h-print-105 flex flex-col justify-between">
                               <h4 className="text-xs font-black text-rose-800 uppercase tracking-wider">Sikap dan Disiplin</h4>
                               <p className="text-xs text-slate-700 leading-relaxed font-medium mt-1">
                                 {selectedStudent.disiplin}
@@ -775,7 +792,7 @@
                             </div>
 
                             {/* Interaksi Sosial dan Kepemimpinan */}
-                            <div className="border border-amber-200 bg-amber-50/10 rounded-xl p-4 h-[105px] flex flex-col justify-between">
+                            <div className="border border-amber-200 bg-amber-50/10 rounded-xl p-4 h-[105px] h-print-105 flex flex-col justify-between">
                               <h4 className="text-xs font-black text-amber-800 uppercase tracking-wider">Interaksi Sosial dan Kepemimpinan</h4>
                               <p className="text-xs text-slate-700 leading-relaxed font-medium mt-1">
                                 {selectedStudent.sosial}
@@ -783,7 +800,7 @@
                             </div>
 
                             {/* Prestasi Non-Akademik */}
-                            <div className="border border-yellow-200 bg-yellow-50/10 rounded-xl p-4 h-[105px] flex flex-col justify-between">
+                            <div className="border border-yellow-200 bg-yellow-50/10 rounded-xl p-4 h-[105px] h-print-105 flex flex-col justify-between">
                               <h4 className="text-xs font-black text-yellow-800 uppercase tracking-wider">Prestasi Non-Akademik</h4>
                               <p className="text-xs text-slate-700 leading-relaxed font-medium mt-1">
                                 {selectedStudent.prestasi}
@@ -799,7 +816,7 @@
 
 
                   {/* PAGE 2 OF THE REPORT CARD */}
-                  <div className="print-page bg-white max-w-[210mm] mx-auto p-12 shadow-md border border-slate-200 relative overflow-hidden">
+                  <div className="print-page bg-white max-w-[210mm] mx-auto p-12 print:p-[15mm] shadow-md border border-slate-200 relative overflow-hidden">
                     
                     {/* Center Large Transparent Watermark */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] pointer-events-none opacity-[0.04] flex items-center justify-center z-0">
@@ -844,7 +861,7 @@
                         </div>
 
                         {/* Primary 2 Signatures */}
-                        <div className="grid grid-cols-2 gap-12 text-center text-xs">
+                        <div className="grid grid-cols-2 grid-cols-print-2 gap-12 text-center text-xs">
                           <div>
                             <p className="text-slate-500 font-medium mb-20">Wali Kelas</p>
                             <p className="font-extrabold text-slate-900 underline">
@@ -905,7 +922,7 @@
                           className="px-4 py-2 bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-emerald-700 transition"
                         >
                           ➕ Tambah Baru
-                        </button>
+                    </button>
                         <button 
                           onClick={() => {
                             setShowImportModal(true);
