@@ -26,6 +26,17 @@
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
+    /* Aturan ketebalan garis pertengahan (1.5px) untuk layar web */
+    .screen-border-1-5 {
+      border-width: 1.5px !important;
+    }
+    .screen-border-b-1-5 {
+      border-bottom-width: 1.5px !important;
+    }
+    .screen-border-t-1-5 {
+      border-top-width: 1.5px !important;
+    }
+
     @page {
       size: A4;
       margin: 0 !important;
@@ -124,10 +135,10 @@
         height: 64px !important;
       }
 
-      /* Pertegas garis tepi kotak saat dicetak (Abu-abu Gelap Solid Premium) */
+      /* Pertegas garis tepi kotak saat dicetak (Abu-abu Gelap Presisi 1.5px) */
       .print-border-bold {
         border-color: #4b5563 !important; /* Gray 600 (Abu-abu Gelap) */
-        border-width: 1px !important;
+        border-width: 1.5px !important;
         border-style: solid !important;
       }
       
@@ -139,13 +150,13 @@
       
       .print-border-b-bold {
         border-bottom-color: #4b5563 !important;
-        border-bottom-width: 1px !important;
+        border-bottom-width: 1.5px !important;
         border-bottom-style: solid !important;
       }
       
       .print-border-t-bold {
         border-top-color: #4b5563 !important;
-        border-top-width: 1px !important;
+        border-top-width: 1.5px !important;
         border-top-style: solid !important;
       }
     }
@@ -256,7 +267,7 @@
         "Pertahankan prestasi gemilangmu, Nak. Jaga terus kerendahan hati dan kesantunan akhlakmu.",
         "Ustadzah bangga dengan akhlak muliamu. Teruslah menjadi teladan kebaikan di mana pun berada.",
         "Potensimu sangat besar, tingkatkan rasa percaya dirimu dan teruslah rajin murojaah hafalan.",
-        "Semoga Allah senantiasa memberkahi belajarmu. Jaga kesehatan dan pertahankan semangat tholabul ilmi.",
+        "Semoga Allah senantiasa memberkahi belajarmu. Jaga kesehatan and pertahankan semangat tholabul ilmi.",
         "Ananda memiliki kemandirian yang luar biasa. Tingkatkan penguasaan bahasa asingmu, ya.",
         "Belajarlah dengan lebih tekun dan teliti. Ustadzah yakin ananda mampu meraih nilai yang lebih baik.",
         "Kurangi waktu bermain, fokuslah pada target hafalan Al-Qur'an yang telah disepakati bersama.",
@@ -534,7 +545,7 @@
         });
       };
 
-      // Download Data Excel / CSV dengan 11 kolom presisi
+      // Download Data Excel / CSV dengan 12 kolom presisi (Termasuk pemisahan "Jumlah Juz" dan "Tahfizh Al-Qur'an")
       const handleDownloadExcel = () => {
         if (students.length === 0) {
           triggerAlert("Tidak ada data siswa untuk diunduh.", "Data Kosong");
@@ -550,7 +561,8 @@
           "Mata Pelajaran Unggul",
           "Mata Pelajaran Perlu Bimbingan",
           "Progress 1 Tahun", 
-          "Tahfizh Al-Qur'an", 
+          "Jumlah Juz",                      // Kolom Baru khusus Jumlah Juz
+          "Tahfizh Al-Qur'an",                // Kolom Detail hafalan
           "Ibadah Harian", 
           "Sikap & Disiplin", 
           "Kepemimpinan & Sosial", 
@@ -569,7 +581,8 @@
           s.mapel_unggul || "",
           s.mapel_perlu || "",
           s.progres_1s || "", 
-          s.tahfizh_detail || (s.tahfizh_juz ? `${s.tahfizh_juz} Juz` : "0 Juz"), 
+          s.tahfizh_juz !== undefined ? s.tahfizh_juz : 0, 
+          s.tahfizh_detail || "", 
           s.ibadah || "", 
           s.disiplin || "", 
           s.sosial || "", 
@@ -603,10 +616,10 @@
         document.body.removeChild(link);
       };
 
-      // Template Generator dengan 11 Kolom
+      // Template Generator dengan 12 Kolom yang mendukung pemisahan Jumlah Juz secara eksplisit
       const getTemplateTSV = () => {
-        const headers = "Nama Santri\tNIS / Kelas\tNilai SAS (Ganjil)\tNilai SAT (Genap)\tHasil Psikotes Awal\tMata Pelajaran Unggul\tMata Pelajaran Perlu Bimbingan\tProgress 1 Tahun\tTahfizh Al-Qur'an\tIbadah Harian\tSikap & Disiplin\tKepemimpinan & Sosial\tPrestasi Non-Akademik\tFokus Peningkatan & Target Tahun Selanjutnya\tPesan Wali Kelas & Wali Kamar\tNama Wali Kamar";
-        const dummyRow = "Ria Ricis\tNIS-001/7 A\t88\t94\tMenunjukkan tingkat penyesuaian sosial yang luar biasa tinggi.\tBahasa Arab, Seni Budaya\tMatematika\tMengalami lompatan pemahaman kognitif yang sangat baik, sangat vokal dan antusias dalam berdiskusi kelompok, serta konsisten menyerahkan tugas tepat waktu.\t5 Juz (Lancar Juz 30, 29, 28, Surah Al-Kahfi, dan Yasin)\tSangat istiqamah dalam shalat berjamaah lima waktu di mushola putri asrama, rajin mengamalkan puasa sunnah Senin-Kamis.\tSelalu mematuhi peraturan pondok dengan gembira, merapikan kasur and lemari secara mandiri.\tMemiliki jiwa kepemimpinan (leadership) alamiah yang menonjol, sangat mudah bergaul, gemar menolong teman.\tJuara 1 Lomba Pidato Dakwah Keagamaan (Muhadharah) tingkat Pondok Pesantren.\tMeningkatkan ketelitian dalam menyelesaikan soal hitungan Matematika dan lebih tenang serta tartil ketika menyetor hafalan baru.\tMasya Allah, ananda Ria adalah santri yang penuh energi positif. Teruslah konsisten menjaga ibadah.\tSayyidah Raisya Apalah (Arti Menunggu)";
+        const headers = "Nama Santri\tNIS / Kelas\tNilai SAS (Ganjil)\tNilai SAT (Genap)\tHasil Psikotes Awal\tMata Pelajaran Unggul\tMata Pelajaran Perlu Bimbingan\tProgress 1 Tahun\tJumlah Juz\tTahfizh Al-Qur'an\tIbadah Harian\tSikap & Disiplin\tKepemimpinan & Sosial\tPrestasi Non-Akademik\tFokus Peningkatan & Target Tahun Selanjutnya\tPesan Wali Kelas & Wali Kamar\tNama Wali Kamar";
+        const dummyRow = "Ria Ricis\tNIS-001/7 A\t88\t94\tMenunjukkan tingkat penyesuaian sosial yang luar biasa tinggi.\tBahasa Arab, Seni Budaya\tMatematika\tMengalami lompatan pemahaman kognitif yang sangat baik, sangat vokal dan antusias dalam berdiskusi kelompok, serta konsisten menyerahkan tugas tepat waktu.\t5\tLancar Juz 30, 29, 28, Surah Al-Kahfi, dan Yasin\tSangat istiqamah dalam shalat berjamaah lima waktu di mushola putri asrama, rajin mengamalkan puasa sunnah Senin-Kamis.\tSelalu mematuhi peraturan pondok dengan gembira, merapikan kasur and lemari secara mandiri.\tMemiliki jiwa kepemimpinan (leadership) alamiah yang menonjol, sangat mudah bergaul, gemar menolong teman.\tJuara 1 Lomba Pidato Dakwah Keagamaan (Muhadharah) tingkat Pondok Pesantren.\tMeningkatkan ketelitian dalam menyelesaikan soal hitungan Matematika dan lebih tenang serta tartil ketika menyetor hafalan baru.\tMasya Allah, ananda Ria adalah santri yang penuh energi positif. Teruslah konsisten menjaga ibadah.\tSayyidah Raisya Apalah (Arti Menunggu)";
         
         setBulkImportText(`${headers}\n${dummyRow}`);
         triggerAlert("Template berhasil dimuat di kolom teks di bawah! Anda bisa menyalinnya ke Excel/Sheets untuk diisi, lalu klik 'Proses & Upload'.", "Template Berhasil Dimuat");
@@ -680,7 +693,7 @@
             const rowObj = {};
             
             headers.forEach((header, index) => {
-              let key = header;
+              let key = null;
               const h = header.trim().toLowerCase();
               if (h.includes("nama santri") || h.includes("nama lengkap") || h === "nama") {
                 key = "nama";
@@ -696,7 +709,9 @@
                 } else if (h.includes("fokus") || h.includes("target")) {
                   key = "fokus";
                 }
-              } else if (h.includes("tahfizh") || h.includes("qur'an") || h.includes("quran")) {
+              } else if (h.includes("jumlah juz") || h === "juz" || h === "jumlah_juz" || (h.includes("juz") && h.includes("jumlah"))) {
+                key = "tahfizh_juz";
+              } else if (h.includes("tahfizh") || h.includes("qur'an") || h.includes("quran") || h.includes("detail")) {
                 key = "tahfizh_detail";
               } else if (h.includes("ibadah")) {
                 key = "ibadah";
@@ -728,9 +743,14 @@
             const studentId = (Date.now() + i).toString();
             rowObj.id = studentId;
 
-            // Ekstrak angka juz dari deskripsi teks tahfizh
+            // --- SISTEM DETEKSI OTOMATIS & FALLBACK JUMLAH JUZ ---
             let extractedJuz = 0;
-            if (rowObj.tahfizh_detail) {
+            
+            // 1. Jika kolom 'Jumlah Juz' terdeteksi secara eksplisit, gunakan nilainya
+            if (rowObj.tahfizh_juz !== undefined && rowObj.tahfizh_juz !== "") {
+              extractedJuz = parseInt(String(rowObj.tahfizh_juz).replace(/\D/g, '')) || 0;
+            } else if (rowObj.tahfizh_detail) {
+              // 2. Jika tidak ada kolom 'Jumlah Juz', tapi ada detail teks (misal: "5 Juz (Lancar Juz 30...)"), ekstrak angkanya secara cerdas
               const numMatch = String(rowObj.tahfizh_detail).match(/\d+/);
               extractedJuz = numMatch ? parseInt(numMatch[0]) : 0;
             }
@@ -740,7 +760,7 @@
             rowObj.nis = rowObj.nis || "NIS-xxx";
             rowObj.sas = Number(rowObj.sas) || 85;
             rowObj.sat = Number(rowObj.sat) || 88;
-            rowObj.psikotes = rowObj.psikotes || "Menunjukkan stabilitas kognitif dan adaptasi sosial yang baik di lingkungan pondok.";
+            rowObj.psikotes = rowObj.psikotes || "Menunjukkan stabilitas kognitif and adaptasi sosial yang baik di lingkungan pondok.";
             rowObj.mapel_unggul = rowObj.mapel_unggul || "Bahasa Arab, Fiqih";
             rowObj.mapel_perlu = rowObj.mapel_perlu || "Matematika";
             rowObj.wali_kamar = rowObj.wali_kamar || "Sayyidah Raisya Apalah (Arti Menunggu)";
@@ -759,7 +779,7 @@
 
           setShowImportModal(false);
           setBulkImportText("");
-          triggerAlert(`Berhasil mengunggah ${newStudentsList.length} data santri baru!`, "Upload Sukses");
+          triggerAlert(`Berhasil mengunggah ${newStudentsList.length} data santri baru! Keterangan Jumlah Juz telah diperbarui secara otomatis.`, "Upload Sukses");
         } catch (err) {
           console.error("Gagal upload:", err);
           triggerAlert("Gagal memproses data unggahan. Pastikan format file atau salinan tabel benar.", "Kesalahan");
@@ -906,13 +926,12 @@
             )}
 
             {/* AREA DOKUMEN VIEW (RAPOR INDIVIDUAL) */}
-            {}
             <div className="flex-grow">
               {selectedStudent ? (
                 <div className="space-y-6">
                   
-                  {/* HALAMAN 1 (A4) - Tipis & Abu-abu Gelap (Slate-500) */}
-                  <div className="print-page print-h-page print-p-premium bg-white max-w-[210mm] mx-auto p-12 shadow-md border border-slate-500 relative overflow-hidden flex flex-col justify-between">
+                  {/* HALAMAN 1 (A4) - Presisi 1.5px & Abu-abu Gelap (Slate-500) */}
+                  <div className="print-page print-h-page print-p-premium bg-white max-w-[210mm] mx-auto p-12 shadow-md border screen-border-1-5 border-slate-500 relative overflow-hidden flex flex-col justify-between">
                     
                     {/* Watermark Logo Samar */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] pointer-events-none opacity-[0.03] flex items-center justify-center">
@@ -938,8 +957,8 @@
                           </div>
                         </div>
 
-                        {/* Identitas Santri - Tipis & Abu-abu Gelap (Slate-500) */}
-                        <div className="border border-slate-500 print-border-bold rounded-xl p-3 bg-slate-50/60 grid grid-cols-1 sm:grid-cols-2 gap-1 mb-4 text-xs">
+                        {/* Identitas Santri - Presisi 1.5px & Abu-abu Gelap (Slate-500) */}
+                        <div className="border screen-border-1-5 border-slate-500 print-border-bold rounded-xl p-3 bg-slate-50/60 grid grid-cols-1 sm:grid-cols-2 gap-1 mb-4 text-xs">
                           <div>
                             <span className="w-28 inline-block font-extrabold text-slate-500">Nama Santri</span>
                             <span className="text-slate-900 font-extrabold text-sm">: {selectedStudent.nama}</span>
@@ -962,8 +981,8 @@
                             
                             {/* Kolom Kiri: Grafik Nilai, Daya Serap, Tahfizh */}
                             <div className="flex flex-col gap-3">
-                              {/* Box 1: Grafik Perbandingan Nilai - Tipis & Abu-abu Gelap (Slate-500) */}
-                              <div className="border border-slate-500 print-border-bold bg-white flex flex-col justify-between h-[210px] h-print-chart shadow-sm rounded-xl p-3">
+                              {/* Box 1: Grafik Perbandingan Nilai - Presisi 1.5px & Abu-abu Gelap (Slate-500) */}
+                              <div className="border screen-border-1-5 border-slate-500 print-border-bold bg-white flex flex-col justify-between h-[210px] h-print-chart shadow-sm rounded-xl p-3">
                                 <div>
                                   <h4 className="text-[11px] font-black text-[#2b3990] uppercase mb-2">
                                     Perbandingan Nilai Rata-rata
@@ -1001,8 +1020,8 @@
                                 </div>
                               </div>
 
-                              {/* Box 2: Daya Serap Mapel - Tipis & Abu-abu Gelap (Slate-500) */}
-                              <div className="border border-slate-500 print-border-bold rounded-xl p-3 bg-white h-[105px] h-print-half shadow-sm flex flex-col justify-center">
+                              {/* Box 2: Daya Serap Mapel - Presisi 1.5px & Abu-abu Gelap (Slate-500) */}
+                              <div className="border screen-border-1-5 border-slate-500 print-border-bold rounded-xl p-3 bg-white h-[105px] h-print-half shadow-sm flex flex-col justify-center">
                                 <h4 className="text-[11px] font-black text-[#2b3990] uppercase mb-1.5">
                                   Daya Serap & Penguasaan
                                 </h4>
@@ -1012,20 +1031,24 @@
                                 </div>
                               </div>
 
-                              {/* Box 3: Capaian Tahfizh - Tipis & Abu-abu Gelap (Slate-500) */}
-                              <div className="border border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-3 h-[105px] h-print-half shadow-sm flex flex-col justify-center">
+                              {/* Box 3: Capaian Tahfizh - Presisi 1.5px & Abu-abu Gelap (Slate-500) */}
+                              <div className="border screen-border-1-5 border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-3 h-[105px] h-print-half shadow-sm flex flex-col justify-center">
                                 <div className="flex justify-between items-center mb-1">
                                   <h4 className="text-[11px] font-black text-[#2b3990] uppercase">
                                     Tahfizh Al-Qur'an
                                   </h4>
-                                  <span className="px-2 py-0.5 bg-[#2b3990] text-white font-extrabold text-[9px] rounded-full">{selectedStudent.tahfizh_juz} Juz</span>
+                                  <span className="px-2 py-0.5 bg-[#2b3990] text-white font-extrabold text-[9px] rounded-full">
+                                    {selectedStudent.tahfizh_juz ? `${selectedStudent.tahfizh_juz} Juz` : "0 Juz"}
+                                  </span>
                                 </div>
-                                <p className="print-desc-text text-xs font-bold text-slate-800 leading-normal line-clamp-2">{selectedStudent.tahfizh_detail || `${selectedStudent.tahfizh_juz} Juz Terhafal`}</p>
+                                <p className="print-desc-text text-xs font-bold text-slate-800 leading-normal line-clamp-2">
+                                  {selectedStudent.tahfizh_detail || "Belum ada catatan detail tahfizh."}
+                                </p>
                               </div>
                             </div>
                             
-                            {/* Kolom Kanan: Hasil Psikotes Awal Masuk & Progress 1 Tahun - Tipis & Abu-abu Gelap (Slate-500) */}
-                            <div className="border border-slate-500 print-border-bold rounded-xl p-3 bg-white flex flex-col gap-2 h-[424px] h-print-tall shadow-sm">
+                            {/* Kolom Kanan: Hasil Psikotes Awal Masuk & Progress 1 Tahun */}
+                            <div className="border screen-border-1-5 border-slate-500 print-border-bold rounded-xl p-3 bg-white flex flex-col gap-2 h-[424px] h-print-tall shadow-sm">
                               <h4 className="text-[11px] font-black text-[#2b3990] uppercase">
                                 Hasil Psikotes Awal Masuk
                               </h4>
@@ -1045,7 +1068,7 @@
                           </div>
                         </div>
 
-                        {/* BAGIAN KARAKTER & AKHLAK - Tipis & Abu-abu Gelap (Slate-500) */}
+                        {/* BAGIAN KARAKTER & AKHLAK */}
                         <div>
                           <div className="flex items-center gap-2 mb-2">
                             <div className="w-[4px] h-[18px] bg-[#2b3990]"></div>
@@ -1053,19 +1076,19 @@
                           </div>
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 grid-cols-print-2 gap-3">
-                            <div className="border border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-3 h-[145px] h-print-karakter shadow-sm flex flex-col justify-between">
+                            <div className="border screen-border-1-5 border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-3 h-[145px] h-print-karakter shadow-sm flex flex-col justify-between">
                               <h4 className="text-[10px] font-black text-[#2b3990] uppercase">Ibadah Harian</h4>
                               <p className="print-desc-text text-xs text-slate-700 font-medium leading-normal line-clamp-5">{selectedStudent.ibadah}</p>
                             </div>
-                            <div className="border border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-3 h-[145px] h-print-karakter shadow-sm flex flex-col justify-between">
+                            <div className="border screen-border-1-5 border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-3 h-[145px] h-print-karakter shadow-sm flex flex-col justify-between">
                               <h4 className="text-[10px] font-black text-[#2b3990] uppercase">Sikap & Disiplin</h4>
                               <p className="print-desc-text text-xs text-slate-700 font-medium leading-normal line-clamp-5">{selectedStudent.disiplin}</p>
                             </div>
-                            <div className="border border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-3 h-[145px] h-print-karakter shadow-sm flex flex-col justify-between">
+                            <div className="border screen-border-1-5 border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-3 h-[145px] h-print-karakter shadow-sm flex flex-col justify-between">
                               <h4 className="text-[10px] font-black text-[#2b3990] uppercase">Kepemimpinan & Sosial</h4>
                               <p className="print-desc-text text-xs text-slate-700 font-medium leading-normal line-clamp-5">{selectedStudent.sosial}</p>
                             </div>
-                            <div className="border border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-3 h-[145px] h-print-karakter shadow-sm flex flex-col justify-between">
+                            <div className="border screen-border-1-5 border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-3 h-[145px] h-print-karakter shadow-sm flex flex-col justify-between">
                               <h4 className="text-[10px] font-black text-[#2b3990] uppercase">Prestasi Non-Akademik</h4>
                               <p className="print-desc-text text-xs text-slate-700 font-medium leading-normal line-clamp-5">{selectedStudent.prestasi}</p>
                             </div>
@@ -1076,9 +1099,8 @@
                     </div>
                   </div>
 
-                  {/* HALAMAN 2 (A4) - Tipis & Abu-abu Gelap (Slate-500) */}
-                  {}
-                  <div className="print-page print-h-page print-p-premium bg-white max-w-[210mm] mx-auto p-12 shadow-md border border-slate-500 relative overflow-hidden flex flex-col justify-between">
+                  {/* HALAMAN 2 (A4) - Presisi 1.5px & Abu-abu Gelap (Slate-500) */}
+                  <div className="print-page print-h-page print-p-premium bg-white max-w-[210mm] mx-auto p-12 shadow-md border screen-border-1-5 border-slate-500 relative overflow-hidden flex flex-col justify-between">
                     
                     {/* Watermark Logo Samar */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] pointer-events-none opacity-[0.03] flex items-center justify-center">
@@ -1087,17 +1109,17 @@
 
                     <div className="relative z-10 flex flex-col h-full justify-between">
                       <div>
-                        {/* Header Mini - Tipis & Abu-abu Gelap (Slate-500) */}
-                        <div className="border-b border-slate-500 print-border-b-bold pb-2 mb-4">
+                        {/* Header Mini - Presisi 1.5px & Abu-abu Gelap (Slate-500) */}
+                        <div className="border-b screen-border-b-1-5 border-slate-500 print-border-b-bold pb-2 mb-4">
                           <div className="flex justify-between items-center">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lanjutan Rapor Holistik</span>
                             <span className="text-[10px] font-extrabold text-[#2b3990]">{selectedStudent.nama} ({selectedStudent.nis})</span>
                           </div>
                         </div>
 
-                        {/* Fokus Peningkatan & Target Tahun Selanjutnya - Tipis & Abu-abu Gelap (Slate-500) */}
+                        {/* Fokus Peningkatan & Target Tahun Selanjutnya */}
                         <div className="mb-4">
-                          <div className="border border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-4 shadow-sm">
+                          <div className="border screen-border-1-5 border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-4 shadow-sm">
                             <h4 className="text-[11px] font-black text-[#2b3990] mb-1.5 uppercase tracking-wider">
                               Fokus Peningkatan & Target Tahun Selanjutnya
                             </h4>
@@ -1105,9 +1127,9 @@
                           </div>
                         </div>
 
-                        {/* Catatan Komprehensif Asrama - Tipis & Abu-abu Gelap (Slate-500) */}
+                        {/* Catatan Komprehensif Asrama */}
                         <div className="mb-6">
-                          <div className="border border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-4 shadow-sm">
+                          <div className="border screen-border-1-5 border-slate-500 print-border-bold bg-[#00aeef]/3 rounded-xl p-4 shadow-sm">
                             <h4 className="text-[11px] font-black text-[#2b3990] mb-1.5 uppercase tracking-wider">
                               Pesan / Rekomendasi Wali Kelas & Wali Kamar
                             </h4>
@@ -1116,8 +1138,8 @@
                         </div>
                       </div>
 
-                      {/* Area Tanda Tangan - Tipis & Abu-abu Gelap (Slate-500) */}
-                      <div className="space-y-6 border-t border-slate-500 print-border-t-bold pt-4">
+                      {/* Area Tanda Tangan */}
+                      <div className="space-y-6 border-t screen-border-t-1-5 border-slate-500 print-border-t-bold pt-4">
                         <div className="text-center text-xs">
                           <p className="font-semibold text-slate-600">Tangerang, {globalTanggal}</p>
                         </div>
@@ -1168,7 +1190,6 @@
           </div>
 
           {/* MODAL EDIT & TAMBAH DATA */}
-          {}
           {editingStudent && (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-5">
@@ -1333,7 +1354,7 @@
                     <input type="text" value={editingStudent.prestasi} onChange={(e) => setEditingStudent({...editingStudent, prestasi: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
                   </div>
 
-                  {/* Fokus Peningkatan & Target Tahun Selanjutnya */}
+                  {/* Fokus Peningkatan & Target Target Tahun Selanjutnya */}
                   <div className="col-span-2">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 mb-1.5">
                       <label className="block text-xs font-bold text-slate-600">Fokus Peningkatan & Target Tahun Selanjutnya</label>
@@ -1387,13 +1408,12 @@
           )}
 
           {/* MODAL UPLOAD SPREADSHEET / EXCEL / CSV */}
-          {}
           {showImportModal && (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 space-y-4">
                 <div className="flex justify-between items-start border-b pb-2">
                   <div>
-                    <h3 className="text-sm font-black text-[#2b3990]">📤 Upload Excel)</h3>
+                    <h3 className="text-sm font-black text-[#2b3990]">📤 Upload Excel</h3>
                     <p className="text-[11px] text-slate-500 mt-0.5">Mendukung unggahan file CSV atau salin & tempel tabel secara langsung dari Excel.</p>
                   </div>
                   <button onClick={getTemplateTSV} className="text-[10px] bg-indigo-50 hover:bg-indigo-100 text-[#2b3990] font-black px-3 py-1.5 rounded-lg transition border border-indigo-100">Ambil Template Teks</button>
